@@ -77,6 +77,7 @@ AI 판단:
 
 - [MVP 범위](docs/MVP_SCOPE.md)
 - [구현 상태와 에이전트 핸드오프](docs/IMPLEMENTATION_STATUS.md)
+- [서버 배포 제한](docs/DEPLOYMENT_CONSTRAINTS.md)
 - [AI 추출 계약](docs/AI_EXTRACTION_CONTRACT.md)
 - [3일 구현 계획](docs/IMPLEMENTATION_PLAN.md)
 - [GitHub 이슈 초안](docs/GITHUB_ISSUES.md)

@@ -101,13 +101,15 @@
 
 - 앱은 `DATABASE_URL`만 있으면 PostgreSQL에 저장 가능합니다.
 - 테이블은 앱이 자동 생성합니다.
+- 원격 서버 작업 제한은 [docs/DEPLOYMENT_CONSTRAINTS.md](DEPLOYMENT_CONSTRAINTS.md)에 정리되어 있습니다.
 
 남은 작업:
 
-- Ubuntu 서버에 PostgreSQL 설치/DB/user 생성
+- 교수님 서버의 `/home/vrsoft/HSUniv/team1/` 안에서만 앱 배포
+- 서버 내 Node.js/npm/PostgreSQL 사용 가능 여부 확인
 - `.env`에 안전한 `DATABASE_URL` 설정
 - SSH password 또는 DB password는 repo에 기록하지 않기
-- 필요 시 SSH tunnel 또는 SSL 설정 결정
+- 필요 시 SSH tunnel, 포트, 장기 실행 방식 확인
 
 추천 신규 작업:
 

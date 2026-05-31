@@ -4,6 +4,8 @@
 
 이 프로젝트의 핵심은 "정제되지 않은 원문에서 일정을 추론하되, 사용자 승인 전에는 저장하지 않는 것"입니다.
 
+서버 배포 작업을 맡는 경우 [docs/DEPLOYMENT_CONSTRAINTS.md](docs/DEPLOYMENT_CONSTRAINTS.md)를 먼저 읽고, `/home/vrsoft/HSUniv/team1/` 밖은 절대 건드리지 마세요.
+
 Claude가 맡기 좋은 작업:
 
 - 시간 조율 interval intersection 엔진 구현

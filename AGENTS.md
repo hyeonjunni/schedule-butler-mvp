@@ -6,6 +6,8 @@
 
 3일 안에 Schedule Butler MVP를 구현합니다.
 
+서버 배포나 원격 작업을 맡는 에이전트는 반드시 [docs/DEPLOYMENT_CONSTRAINTS.md](docs/DEPLOYMENT_CONSTRAINTS.md)를 먼저 읽어야 합니다.
+
 성공 기준:
 
 - 정제되지 않은 카톡/이메일/STT 텍스트를 입력할 수 있다.
@@ -18,6 +20,7 @@
 ## 작업 원칙
 
 - `.env` 또는 실제 API key, SSH password, DB password를 절대 커밋하지 않는다.
+- 교수님 서버에서는 `/home/vrsoft/HSUniv/team1/` 안에서만 작업한다.
 - 새 기능보다 MVP 성공 기준을 우선한다.
 - 큰 리팩터링을 피하고, 변경 목적이 명확한 파일만 수정한다.
 - 구현 전후로 실행 가능한 검증 방법을 남긴다.
