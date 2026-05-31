@@ -15,7 +15,6 @@ export async function PATCH(request: Request) {
     if (!body.id || !statuses.includes(body.status as StoredNotification["status"])) {
       return NextResponse.json({ error: "invalid notification update" }, { status: 400 });
     }
-
     const notification = await updateNotificationStatus(body.id, body.status!);
     return NextResponse.json({ notification });
   } catch {

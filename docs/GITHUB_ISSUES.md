@@ -70,3 +70,4 @@ Acceptance criteria:
 - 30-minute reminder is generated.
 - Departure/checklist reminder is generated when checklist or location exists.
 - Browser notification permission flow is handled.
+- Due notifications are marked as shown after display while the app is open.

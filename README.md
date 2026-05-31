@@ -92,6 +92,14 @@ npm run dev
 
 브라우저에서 `http://localhost:3000`을 엽니다.
 
+개발 서버가 꼬이거나 `missing required error components`가 보이면 실행 중인 dev 서버를 끄고 아래 명령으로 캐시를 비운 뒤 다시 시작합니다.
+
+```bash
+npm run dev:clean
+```
+
+개발 서버가 켜진 상태에서 `npm run build`를 동시에 실행하면 Next dev 캐시가 깨질 수 있습니다.
+
 환경 변수:
 
 - `OPENAI_API_KEY`: OpenAI API key
@@ -110,6 +118,8 @@ npm run dev
 - 승인/수정/취소 플로우
 - 회의, 발표, 야외 활동, 운동, 여행 등 문맥 기반 체크리스트 추천
 - 승인 후 일정, TODO, 체크리스트, 알림 저장
+- 앱이 열려 있을 때 due notification 자동 표시 및 `shown` 처리
+- 알림 탭에서 예약 알림 확인/취소
 - PostgreSQL 저장소와 로컬 JSON fallback
 - 오늘/이번 주 성격의 일정 리스트, TODO, 알림 화면
 

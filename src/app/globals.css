@@ -172,6 +172,13 @@ h2 {
   line-height: 1.35;
 }
 
+.notice.subtle {
+  margin: 0;
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+}
+
 .screen {
   flex: 1;
   overflow: auto;
@@ -513,7 +520,15 @@ h2 {
   gap: 6px;
 }
 
-.alertItem span {
+.alertHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.alertItem span,
+.statusBadge {
   width: max-content;
   padding: 4px 7px;
   border-radius: 8px;
@@ -523,6 +538,21 @@ h2 {
   font-weight: 900;
 }
 
+.statusBadge {
+  background: #ecefed;
+  color: var(--muted);
+}
+
+.statusBadge.shown {
+  background: rgba(43, 138, 138, 0.12);
+  color: var(--teal);
+}
+
+.statusBadge.cancelled {
+  background: rgba(221, 107, 85, 0.14);
+  color: #a94332;
+}
+
 .alertItem p {
   line-height: 1.4;
   font-size: 14px;
@@ -530,6 +560,27 @@ h2 {
 
 .alertItem small {
   color: var(--muted);
+}
+
+.alertActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.alertActions button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8faf6;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .emptyState {

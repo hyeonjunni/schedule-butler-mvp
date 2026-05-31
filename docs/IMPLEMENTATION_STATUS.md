@@ -71,8 +71,9 @@
 - 일정 30분 전 알림 데이터 생성
 - 장소 또는 체크리스트가 있으면 출발 전 체크리스트 알림 데이터 생성
 - 브라우저 Notification 권한 요청 버튼
-- 페이지가 열려 있고 권한이 허용된 경우 due notification 표시
-- 표시된 notification은 `shown` 상태로 갱신
+- 앱이 열려 있으면 30초마다 due notification을 확인합니다.
+- due notification은 브라우저 알림 또는 앱 내부 notice로 표시한 뒤 `shown` 상태로 저장합니다.
+- 알림 탭에서 예약 알림을 수동 확인하거나 취소할 수 있습니다.
 
 ### 문맥 기반 체크리스트
 
@@ -184,4 +185,6 @@ npm run typecheck
 npm run build
 ```
 
-둘 다 통과했습니다.
+모두 통과했습니다.
+
+개발 서버가 `missing required error components` 상태가 되면 `npm run dev:clean`으로 `.next` 캐시를 비우고 다시 시작합니다.

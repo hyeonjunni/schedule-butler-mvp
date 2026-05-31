@@ -14,7 +14,7 @@ import {
   Sparkles,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDateTime, fromLocalDateInputValue, toLocalDateInputValue } from "@/lib/time";
 import type {
   AppState,
@@ -74,6 +74,7 @@ export default function Home() {
   const [eventForm, setEventForm] = useState<EventForm>(emptyEventForm());
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const deliveredNotificationIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     void refreshState();
@@ -81,11 +82,10 @@ export default function Home() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void showDueNotifications(state.notifications);
-    }, 30 * 1000);
-    void showDueNotifications(state.notifications);
+      void refreshState();
+    }, 30000);
     return () => window.clearInterval(timer);
-  }, [state.notifications]);
+  }, []);
 
   useEffect(() => {
     if (!currentDraft) return;
@@ -101,7 +101,9 @@ export default function Home() {
   async function refreshState() {
     const response = await fetch("/api/state");
     if (!response.ok) return;
-    setState((await response.json()) as AppState);
+    const nextState = (await response.json()) as AppState;
+    setState(nextState);
+    void processDueNotifications(nextState);
   }
 
   async function analyze() {
@@ -183,26 +185,32 @@ export default function Home() {
     setNotice(permission === "granted" ? "브라우저 알림 권한이 켜졌습니다." : "알림 권한이 허용되지 않았습니다.");
   }
 
-  async function showDueNotifications(notifications: AppState["notifications"]) {
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
-    const now = Date.now();
-    const due = notifications.filter((notification) => {
+  async function processDueNotifications(nextState: AppState) {
+    const dueNotifications = nextState.notifications.filter((notification) => {
       if (notification.status !== "scheduled" || !notification.notify_at) return false;
       const notifyAt = new Date(notification.notify_at).getTime();
-      return !Number.isNaN(notifyAt) && notifyAt <= now;
+      return !Number.isNaN(notifyAt) && notifyAt <= Date.now();
     });
-    if (!due.length) return;
 
-    await Promise.all(
-      due.map(async (notification) => {
-        new Notification("Schedule Butler", { body: notification.message });
-        await fetch("/api/notifications", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: notification.id, status: "shown" })
+    for (const notification of dueNotifications) {
+      if (deliveredNotificationIds.current.has(notification.id)) continue;
+      deliveredNotificationIds.current.add(notification.id);
+      setNotice(notification.message);
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Schedule Butler", {
+          body: notification.message
         });
-      })
-    );
+      }
+      await markNotification(notification.id, "shown");
+    }
+  }
+
+  async function markNotification(id: string, status: "shown" | "cancelled") {
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status })
+    });
     await refreshState();
   }
 
@@ -276,7 +284,11 @@ export default function Home() {
           ) : null}
 
           {tab === "alerts" ? (
-            <AlertPanel notifications={state.notifications} requestNotification={requestNotification} />
+            <AlertPanel
+              notifications={state.notifications}
+              requestNotification={requestNotification}
+              markNotification={markNotification}
+            />
           ) : null}
         </div>
       </section>
@@ -584,23 +596,47 @@ function TodoPanel({
 
 function AlertPanel({
   notifications,
-  requestNotification
+  requestNotification,
+  markNotification
 }: {
   notifications: AppState["notifications"];
   requestNotification: () => void;
+  markNotification: (id: string, status: "shown" | "cancelled") => void;
 }) {
+  const scheduledCount = notifications.filter((notification) => notification.status === "scheduled").length;
+
   return (
     <div className="stack">
       <button className="secondaryButton full" type="button" onClick={requestNotification}>
         <Bell size={18} />
         브라우저 알림 권한
       </button>
+      {scheduledCount ? (
+        <div className="notice subtle">
+          예약된 알림 {scheduledCount}개가 있습니다. 앱이 열려 있으면 시간이 되었을 때 자동으로 표시됩니다.
+        </div>
+      ) : null}
       {notifications.length ? (
         notifications.map((notification) => (
           <article key={notification.id} className="alertItem">
-            <span>{notification.kind === "follow_up" ? "확인" : "알림"}</span>
+            <div className="alertHeader">
+              <span>{notification.kind === "follow_up" ? "확인" : "알림"}</span>
+              <StatusBadge status={notification.status} />
+            </div>
             <p>{notification.message}</p>
             <small>{notification.notify_at ? formatKoreanDateTime(notification.notify_at) : "시간 미정"}</small>
+            {notification.status === "scheduled" ? (
+              <div className="alertActions">
+                <button type="button" onClick={() => markNotification(notification.id, "shown")}>
+                  <CheckCircle2 size={15} />
+                  확인
+                </button>
+                <button type="button" onClick={() => markNotification(notification.id, "cancelled")}>
+                  <X size={15} />
+                  취소
+                </button>
+              </div>
+            ) : null}
           </article>
         ))
       ) : (
@@ -608,6 +644,10 @@ function AlertPanel({
       )}
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: AppState["notifications"][number]["status"] }) {
+  return <strong className={`statusBadge ${status}`}>{statusLabel(status)}</strong>;
 }
 
 function EmptyState({
@@ -714,5 +754,13 @@ function classificationLabel(value: ExtractionPayload["classification"]) {
     needs_more_info: "정보 부족",
     todo_only: "TODO",
     not_schedule_related: "일정 아님"
+  }[value];
+}
+
+function statusLabel(value: AppState["notifications"][number]["status"]) {
+  return {
+    scheduled: "예약",
+    shown: "표시됨",
+    cancelled: "취소됨"
   }[value];
 }
