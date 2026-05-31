@@ -124,6 +124,19 @@ export async function toggleItem(kind: "todo" | "checklist", id: string, complet
   return item;
 }
 
+export async function updateNotificationStatus(
+  id: string,
+  status: StoredNotification["status"]
+) {
+  if (usePostgres()) return updateNotificationStatusPg(id, status);
+  const snapshot = await readLocal();
+  const notification = snapshot.notifications.find((entry) => entry.id === id);
+  if (!notification) throw new Error("Notification not found");
+  notification.status = status;
+  await writeLocal(snapshot);
+  return notification;
+}
+
 function buildEvent(draftId: string, payload: ExtractionPayload): StoredEvent | null {
   const candidate = payload.events[0];
   if (!candidate || !candidate.title) return null;
@@ -426,6 +439,16 @@ async function toggleItemPg(kind: "todo" | "checklist", id: string, completed: b
   );
   if (!result.rows[0]) throw new Error("Item not found");
   return kind === "todo" ? mapTodoRow(result.rows[0]) : mapChecklistRow(result.rows[0]);
+}
+
+async function updateNotificationStatusPg(id: string, status: StoredNotification["status"]) {
+  const pgPool = await getPool();
+  const result = await pgPool.query(
+    "UPDATE notifications SET status = $2 WHERE id = $1 RETURNING *",
+    [id, status]
+  );
+  if (!result.rows[0]) throw new Error("Notification not found");
+  return mapNotificationRow(result.rows[0]);
 }
 
 async function insertEvent(client: PoolClient, event: StoredEvent) {

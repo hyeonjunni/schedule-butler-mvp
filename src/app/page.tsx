@@ -80,6 +80,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      void showDueNotifications(state.notifications);
+    }, 30 * 1000);
+    void showDueNotifications(state.notifications);
+    return () => window.clearInterval(timer);
+  }, [state.notifications]);
+
+  useEffect(() => {
     if (!currentDraft) return;
     setEventForm(formFromPayload(currentDraft.payload));
   }, [currentDraft]);
@@ -173,6 +181,29 @@ export default function Home() {
     }
     const permission = await Notification.requestPermission();
     setNotice(permission === "granted" ? "브라우저 알림 권한이 켜졌습니다." : "알림 권한이 허용되지 않았습니다.");
+  }
+
+  async function showDueNotifications(notifications: AppState["notifications"]) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const now = Date.now();
+    const due = notifications.filter((notification) => {
+      if (notification.status !== "scheduled" || !notification.notify_at) return false;
+      const notifyAt = new Date(notification.notify_at).getTime();
+      return !Number.isNaN(notifyAt) && notifyAt <= now;
+    });
+    if (!due.length) return;
+
+    await Promise.all(
+      due.map(async (notification) => {
+        new Notification("Schedule Butler", { body: notification.message });
+        await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: notification.id, status: "shown" })
+        });
+      })
+    );
+    await refreshState();
   }
 
   return (

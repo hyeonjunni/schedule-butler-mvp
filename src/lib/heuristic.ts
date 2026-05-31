@@ -1,5 +1,6 @@
 import { addHoursIso, getBaseDateKst, nextWeekdayIso } from "./time";
 import { recommendChecklist } from "./checklist";
+import { buildNegotiationSuggestion } from "./negotiation";
 import type { ExtractionPayload, InputType, TimeConstraint, TimeWindow } from "./types";
 
 const unavailablePattern = /(안\s*돼|안됨|안되|불가|못|어렵|애매)/;
@@ -19,7 +20,7 @@ export function heuristicExtract(rawText: string, inputType: InputType): Extract
 
   if (hasNegotiationSignals) {
     const constraints = buildConstraints(speakerLines);
-    const suggestion = buildSuggestion(constraints);
+    const suggestion = buildNegotiationSuggestion(constraints).suggestion;
     return {
       classification: "negotiating_event",
       confidence: 0.64,

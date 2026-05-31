@@ -6,6 +6,7 @@ import type {
   TimeConstraint,
   TodoCandidate
 } from "./types";
+import { enhanceNegotiationConstraints } from "./negotiation";
 
 const classifications: Classification[] = [
   "confirmed_event",
@@ -45,7 +46,7 @@ export function normalizeExtraction(input: unknown, fallbackTitle = "일정 후�
       .filter(Boolean)
   };
 
-  return repairPastScheduleDates(normalized);
+  return enhanceNegotiationConstraints(repairPastScheduleDates(normalized));
 }
 
 function normalizeEvent(value: unknown): EventCandidate | null {
