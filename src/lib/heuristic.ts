@@ -196,49 +196,6 @@ function normalizeHour(hour: number, context: string) {
   return hour;
 }
 
-function buildSuggestion(constraints: TimeConstraint[]) {
-  const concrete = constraints.flatMap((constraint) =>
-    constraint.available
-      .filter((window) => window.start_at)
-      .map((window) => ({ person: constraint.person, window }))
-  );
-  const candidate = concrete.sort((a, b) =>
-    String(a.window.start_at).localeCompare(String(b.window.start_at))
-  )[0];
-
-  if (!candidate) {
-    return {
-      type: "ask_follow_up" as const,
-      message:
-        "공통 가능 시간이 아직 명확하지 않습니다. 가능한 날짜와 시간을 한 번에 다시 받아보는 메시지를 보낼까요?",
-      candidate_start_at: null,
-      candidate_end_at: null,
-      risk: "구체적인 시작 시간이 부족합니다."
-    };
-  }
-
-  const conflictTexts = constraints.flatMap((constraint) =>
-    constraint.unavailable
-      .filter((window) => sameDay(window.start_at, candidate.window.start_at))
-      .map((window) => `${constraint.person}: ${window.text}`)
-  );
-
-  return {
-    type: conflictTexts.length ? ("ask_follow_up" as const) : ("propose_time" as const),
-    message: conflictTexts.length
-      ? `${candidate.window.text}가 후보지만 일부 조건과 충돌할 수 있습니다. 이 시간대로 다시 확인해볼까요?`
-      : `${candidate.window.text}가 가장 빠른 후보로 보입니다. 이 시간은 어떤가요?`,
-    candidate_start_at: candidate.window.start_at,
-    candidate_end_at: candidate.window.end_at,
-    risk: conflictTexts.length ? conflictTexts.join(" / ") : null
-  };
-}
-
-function sameDay(a: string | null, b: string | null) {
-  if (!a || !b) return false;
-  return a.slice(0, 10) === b.slice(0, 10);
-}
-
 function inferConfirmedEvent(text: string) {
   const windows = parseTimeWindows(text);
   const hasDate = /(오늘|내일|모레|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말)/.test(text);

@@ -71,6 +71,8 @@
 - 일정 30분 전 알림 데이터 생성
 - 장소 또는 체크리스트가 있으면 출발 전 체크리스트 알림 데이터 생성
 - 브라우저 Notification 권한 요청 버튼
+- 페이지가 열려 있고 권한이 허용된 경우 due notification 표시
+- 표시된 notification은 `shown` 상태로 갱신
 
 ### 문맥 기반 체크리스트
 
@@ -78,6 +80,13 @@
 - 회의, 발표, 면접, 통화, 야외 활동, 운동, 식사, 여행, 병원, 수업, 촬영, 날씨 맥락을 규칙 기반으로 감지합니다.
 - 야외 활동이면 `썬크림`, `물`, `날씨 확인` 같은 준비물을 자동 추천합니다.
 - OpenAI 응답에도 deterministic fallback 추천을 후처리로 덧붙입니다.
+
+### 회귀 테스트
+
+- Vitest 기반 `npm run test` 스크립트
+- 샘플 원문 classification fixture
+- 시간 조율 interval intersection 테스트
+- AI 응답 normalize/schema 방어 테스트
 
 ## 부분 구현
 
@@ -87,13 +96,13 @@
 
 - AI가 추출한 `time_constraints`를 표시합니다.
 - 휴리스틱 fallback은 한국어 요일/시간 표현 일부를 정규화합니다.
-- 가장 빠른 가능 시간 후보를 제안합니다.
-- 같은 날짜의 불가능 조건이 있으면 충돌 risk를 표시합니다.
+- 여러 참석자의 가능 시간 창을 interval intersection으로 계산합니다.
+- 불가능 시간 창을 후보에서 차감합니다.
+- 공통 후보가 있으면 `propose_time`, 없으면 `ask_follow_up`을 제안합니다.
+- OpenAI 응답이 suggestions를 누락해도 deterministic 제안을 보강합니다.
 
 남은 작업:
 
-- 여러 참석자의 시간 창을 실제 interval intersection으로 계산
-- 불가능 시간 차집합 처리
 - "토 2-4, 6-"처럼 끝 시간이 없는 표현의 정책 정교화
 - 오전/오후가 생략된 시간의 신뢰도 표시
 - 후보가 여러 개일 때 우선순위와 대안 표시
@@ -128,10 +137,11 @@
 
 - 알림 데이터 생성
 - 권한 요청 버튼 제공
+- 페이지가 열려 있을 때 due notification 표시
+- 표시 후 notification 상태를 `shown`으로 갱신
 
 남은 작업:
 
-- 페이지가 열려 있을 때 due notification 표시
 - Service Worker 기반 background notification
 - 실제 iOS Safari 제약 확인
 
@@ -154,11 +164,11 @@
 
 ## 다음 에이전트가 바로 할 일
 
-1. Issue #8: interval intersection 기반 시간 조율 엔진 구현
-2. Issue #6: 샘플 원문 fixture와 기대 classification 테스트 추가
-3. Issue #3: 원격 PostgreSQL provisioning 문서 또는 스크립트 추가
-4. Issue #5: due notification polling 및 browser notification 표시
-5. Issue #2: OpenAI Responses API 전환 여부 검토와 schema validation 강화
+1. Issue #2: OpenAI Responses API 전환 여부 검토와 schema validation 강화
+2. Issue #3: 원격 PostgreSQL provisioning 문서 또는 스크립트 추가
+3. Issue #8: 끝 시간이 없는 시간 표현, 오전/오후 생략 신뢰도, 복수 후보 우선순위 고도화
+4. Issue #5: Service Worker 기반 background notification 검토
+5. 테스트 fixture를 실제 GitHub 이슈별 샘플로 계속 확장
 
 추가 고도화 후보:
 
@@ -169,6 +179,7 @@
 ## 검증된 명령
 
 ```bash
+npm run test
 npm run typecheck
 npm run build
 ```
