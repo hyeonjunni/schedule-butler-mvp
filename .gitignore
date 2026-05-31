@@ -8,6 +8,7 @@ out/
 dist/
 build/
 coverage/
+tsconfig.tsbuildinfo
 
 .DS_Store
 *.log
@@ -18,3 +19,4 @@ pnpm-debug.log*
 
 prisma/dev.db
 prisma/dev.db-journal
+.data/

@@ -42,14 +42,15 @@
 
 ## 권장 작업 순서
 
-1. Next.js 앱과 모바일 UI 골격 생성
-2. AI 추출 API route 구현
-3. 추출 JSON schema 검증
-4. 승인 대화 UI 구현
-5. Prisma schema와 PostgreSQL 연결
-6. 캘린더/TODO/체크리스트 화면 구현
-7. 알림 생성 로직 구현
-8. 샘플 원문 테스트 추가
+현재 기본 MVP는 구현되어 있습니다. 이어받는 에이전트는 먼저 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md)를 읽고 남은 작업만 진행하세요.
+
+권장 남은 작업:
+
+1. 시간 조율 interval intersection 엔진 구현
+2. 샘플 원문 fixture와 테스트 추가
+3. 원격 PostgreSQL provisioning 정리
+4. due notification 표시 로직 구현
+5. AI JSON schema validation 강화
 
 ## 금지
 

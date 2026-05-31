@@ -6,11 +6,11 @@
 
 Claude가 맡기 좋은 작업:
 
-- Next.js 앱 골격 생성
-- iPhone 스타일 모바일 UI 구현
-- OpenAI API route 구현
-- Prisma schema 작성
-- 시간 조율 대화 샘플 테스트 작성
+- 시간 조율 interval intersection 엔진 구현
+- 샘플 원문 fixture와 테스트 작성
+- 원격 PostgreSQL provisioning 문서화
+- due notification 표시 로직 구현
+- AI schema validation 강화
 
 주의:
 

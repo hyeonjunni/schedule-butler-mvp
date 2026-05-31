@@ -76,7 +76,41 @@ AI 판단:
 ## 문서
 
 - [MVP 범위](docs/MVP_SCOPE.md)
+- [구현 상태와 에이전트 핸드오프](docs/IMPLEMENTATION_STATUS.md)
 - [AI 추출 계약](docs/AI_EXTRACTION_CONTRACT.md)
 - [3일 구현 계획](docs/IMPLEMENTATION_PLAN.md)
 - [GitHub 이슈 초안](docs/GITHUB_ISSUES.md)
 - [에이전트 협업 가이드](AGENTS.md)
+
+## 실행
+
+```bash
+npm install
+npm run dev
+```
+
+브라우저에서 `http://localhost:3000`을 엽니다.
+
+환경 변수:
+
+- `OPENAI_API_KEY`: OpenAI API key
+- `AI_MODEL`: 기본값 `gpt-4.1-mini`
+- `DATABASE_URL`: PostgreSQL 연결 문자열. 없으면 `.data/schedule-butler.json` 로컬 저장소를 사용합니다.
+- `DATABASE_SSL`: 원격 DB에서 SSL이 필요하면 `true`
+
+## 현재 구현된 범위
+
+- iPhone 스타일 모바일 웹 UI
+- 카톡/이메일/STT/메모 원문 입력
+- OpenAI 기반 일정 추출 API
+- OpenAI 실패 또는 key 미설정 시 휴리스틱 fallback
+- `confirmed_event`, `negotiating_event`, `needs_more_info`, `todo_only` 분류
+- 참석자별 가능/불가능 시간 표시
+- 승인/수정/취소 플로우
+- 승인 후 일정, TODO, 체크리스트, 알림 저장
+- PostgreSQL 저장소와 로컬 JSON fallback
+- 오늘/이번 주 성격의 일정 리스트, TODO, 알림 화면
+
+## 아직 미구현
+
+자세한 내용은 [구현 상태와 에이전트 핸드오프](docs/IMPLEMENTATION_STATUS.md)를 봅니다.
