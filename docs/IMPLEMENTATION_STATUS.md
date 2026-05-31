@@ -47,7 +47,7 @@
 ### 저장소
 
 - `DATABASE_URL`이 PostgreSQL이면 Postgres 사용
-- `DATABASE_URL`이 없으면 `.data/schedule-butler.json` 사용
+- `DATABASE_URL`이 없거나 예시 placeholder면 `.data/schedule-butler.json` 사용
 - 앱 시작 시 Postgres 테이블 자동 생성
 
 저장 엔티티:

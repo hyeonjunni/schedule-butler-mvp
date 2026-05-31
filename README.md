@@ -96,7 +96,7 @@ npm run dev
 
 - `OPENAI_API_KEY`: OpenAI API key
 - `AI_MODEL`: 기본값 `gpt-4.1-mini`
-- `DATABASE_URL`: PostgreSQL 연결 문자열. 없으면 `.data/schedule-butler.json` 로컬 저장소를 사용합니다.
+- `DATABASE_URL`: PostgreSQL 연결 문자열. 없거나 예시 placeholder면 `.data/schedule-butler.json` 로컬 저장소를 사용합니다.
 - `DATABASE_SSL`: 원격 DB에서 SSL이 필요하면 `true`
 
 ## 현재 구현된 범위

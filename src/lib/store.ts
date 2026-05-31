@@ -224,13 +224,15 @@ async function writeLocal(snapshot: Snapshot) {
 }
 
 function usePostgres() {
-  return Boolean(process.env.DATABASE_URL?.startsWith("postgres"));
+  return Boolean(getDatabaseUrl());
 }
 
 async function getPool() {
+  const databaseUrl = getDatabaseUrl();
+  if (!databaseUrl) throw new Error("DATABASE_URL is not configured");
   if (!pool) {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
       ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined
     });
   }
@@ -239,6 +241,13 @@ async function getPool() {
     schemaReady = true;
   }
   return pool;
+}
+
+function getDatabaseUrl() {
+  const value = process.env.DATABASE_URL?.trim();
+  if (!value || !value.startsWith("postgres")) return null;
+  if (/USER|PASSWORD|HOST/.test(value)) return null;
+  return value;
 }
 
 async function ensureSchema(pgPool: Pool) {
