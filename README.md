@@ -108,6 +108,7 @@ npm run dev
 - `confirmed_event`, `negotiating_event`, `needs_more_info`, `todo_only` 분류
 - 참석자별 가능/불가능 시간 표시
 - 승인/수정/취소 플로우
+- 회의, 발표, 야외 활동, 운동, 여행 등 문맥 기반 체크리스트 추천
 - 승인 후 일정, TODO, 체크리스트, 알림 저장
 - PostgreSQL 저장소와 로컬 JSON fallback
 - 오늘/이번 주 성격의 일정 리스트, TODO, 알림 화면

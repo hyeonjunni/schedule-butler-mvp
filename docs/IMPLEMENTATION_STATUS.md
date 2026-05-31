@@ -72,6 +72,13 @@
 - 장소 또는 체크리스트가 있으면 출발 전 체크리스트 알림 데이터 생성
 - 브라우저 Notification 권한 요청 버튼
 
+### 문맥 기반 체크리스트
+
+- 원문에 나온 준비물을 우선 포함합니다.
+- 회의, 발표, 면접, 통화, 야외 활동, 운동, 식사, 여행, 병원, 수업, 촬영, 날씨 맥락을 규칙 기반으로 감지합니다.
+- 야외 활동이면 `썬크림`, `물`, `날씨 확인` 같은 준비물을 자동 추천합니다.
+- OpenAI 응답에도 deterministic fallback 추천을 후처리로 덧붙입니다.
+
 ## 부분 구현
 
 ### 회의 시간 공통집합 계산
@@ -152,6 +159,12 @@
 3. Issue #3: 원격 PostgreSQL provisioning 문서 또는 스크립트 추가
 4. Issue #5: due notification polling 및 browser notification 표시
 5. Issue #2: OpenAI Responses API 전환 여부 검토와 schema validation 강화
+
+추가 고도화 후보:
+
+- 날씨 API를 붙여 비/폭염/추위에 따른 체크리스트를 실제 날짜/장소 기준으로 추천
+- 일정 타입별 checklist rule을 DB나 config로 분리
+- 추천 항목과 원문에서 직접 나온 항목을 UI에서 구분
 
 ## 검증된 명령
 

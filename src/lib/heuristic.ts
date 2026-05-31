@@ -1,4 +1,5 @@
 import { addHoursIso, getBaseDateKst, nextWeekdayIso } from "./time";
+import { recommendChecklist } from "./checklist";
 import type { ExtractionPayload, InputType, TimeConstraint, TimeWindow } from "./types";
 
 const unavailablePattern = /(안\s*돼|안됨|안되|불가|못|어렵|애매)/;
@@ -277,11 +278,5 @@ function inferTodos(text: string) {
 }
 
 function inferChecklist(text: string) {
-  const list = [];
-  if (/노트북/.test(text)) list.push("노트북");
-  if (/자료|문서|파일/.test(text)) list.push("자료 확인");
-  if (/명함/.test(text)) list.push("명함");
-  if (/녹음|통화/.test(text)) list.push("통화 내용 확인");
-  if (/장소|에서/.test(text)) list.push("장소 확인");
-  return list;
+  return recommendChecklist(text);
 }
