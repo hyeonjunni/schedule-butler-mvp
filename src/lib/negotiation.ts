@@ -2,6 +2,7 @@ import type { Suggestion, TimeConstraint, TimeWindow } from "./types";
 
 const DEFAULT_DURATION_MINUTES = 60;
 const MIN_SLOT_MINUTES = 30;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 type Interval = {
   start: number;
@@ -37,10 +38,10 @@ export function buildNegotiationSuggestion(
       candidate: null,
       suggestion: {
         type: "ask_follow_up",
-        message: "Common available time is still unclear. Ask everyone for date and time ranges.",
+        message: "아직 공통 가능 시간이 명확하지 않습니다. 참석자들에게 날짜와 시간 범위를 다시 물어보세요.",
         candidate_start_at: null,
         candidate_end_at: null,
-        risk: "No concrete available time window was found."
+        risk: "구체적인 가능 시간 창을 찾지 못했습니다."
       }
     };
   }
@@ -51,14 +52,18 @@ export function buildNegotiationSuggestion(
 
   if (candidate) {
     const window = intervalToWindow(candidate);
+    const alternatives = candidates.slice(1, 3).map(intervalToWindow);
+    const alternativeText = alternatives.length
+      ? ` 대안: ${alternatives.map(formatWindow).join(", ")}.`
+      : "";
     return {
       candidate: window,
       suggestion: {
         type: "propose_time",
-        message: `A common slot is available: ${formatWindow(window)}. Shall I propose this time?`,
+        message: `공통 후보는 ${formatWindow(window)}입니다.${alternativeText} 이 시간으로 제안할까요?`,
         candidate_start_at: window.start_at,
         candidate_end_at: window.end_at,
-        risk: candidate.texts.length ? candidate.texts.join(" / ") : null
+        risk: buildRisk(candidate.texts)
       }
     };
   }
@@ -71,12 +76,12 @@ export function buildNegotiationSuggestion(
     candidate: fallbackWindow,
     suggestion: {
       type: "ask_follow_up",
-      message: `The closest candidate is ${formatWindow(fallbackWindow)}, but it may not work for everyone. Ask for another option.`,
+      message: `가장 가까운 후보는 ${formatWindow(fallbackWindow)}이지만 모두에게 맞지 않을 수 있습니다. 다른 시간을 물어보세요.`,
       candidate_start_at: fallbackWindow.start_at,
       candidate_end_at: fallbackWindow.end_at,
       risk: conflicts.length
         ? conflicts.join(" / ")
-        : "No slot satisfies every participant's available and unavailable windows."
+        : "모든 참석자의 가능/불가능 시간을 동시에 만족하는 후보가 없습니다."
     }
   };
 }
@@ -146,7 +151,10 @@ function peopleWithAvailability(constraints: TimeConstraint[]) {
 function toInterval(window: TimeWindow, person: string): Interval | null {
   const start = parseDate(window.start_at);
   if (start === null) return null;
-  const end = parseDate(window.end_at) ?? start + DEFAULT_DURATION_MINUTES * 60 * 1000;
+  const end =
+    parseDate(window.end_at) ??
+    inferOpenEndedEnd(start, window.text) ??
+    start + DEFAULT_DURATION_MINUTES * 60 * 1000;
   if (end <= start) return null;
   return {
     start,
@@ -175,6 +183,43 @@ function overlaps(a: Interval, b: Interval) {
 
 function mergeAdjacent(intervals: Interval[]) {
   return intervals.sort((a, b) => a.start - b.start);
+}
+
+function inferOpenEndedEnd(start: number, text: string) {
+  if (!hasOpenEndedExpression(text)) return null;
+  const kstDate = new Date(start + KST_OFFSET_MS);
+  return Date.UTC(
+    kstDate.getUTCFullYear(),
+    kstDate.getUTCMonth(),
+    kstDate.getUTCDate(),
+    14,
+    59,
+    59,
+    999
+  );
+}
+
+function buildRisk(texts: string[]) {
+  const notes = [...texts];
+  if (texts.some(hasOpenEndedExpression)) {
+    notes.push("끝 시간이 없는 표현은 해당 날짜 끝까지 가능한 것으로 해석했습니다.");
+  }
+  if (texts.some(hasAmbiguousMeridiem)) {
+    notes.push("오전/오후가 생략된 시간 표현은 추정값이므로 확인이 필요합니다.");
+  }
+  return notes.length ? notes.join(" / ") : null;
+}
+
+function hasOpenEndedExpression(text: string) {
+  return (
+    /(부터|이후|이상|뒤|후부터)/.test(text) ||
+    /\d{1,2}\s*(?:시)?\s*[-~–]\s*(?:$|[,，\s]|[A-Za-z가-힣])/.test(text)
+  );
+}
+
+function hasAmbiguousMeridiem(text: string) {
+  if (/(오전|오후|저녁|밤|새벽|정오|자정)/.test(text)) return false;
+  return /(?:^|[^\d])(?:1[0-2]|[1-9])\s*(?:시|[-~–]|부터|까지|전|후|,|$)/.test(text);
 }
 
 function intervalToWindow(interval: Interval): TimeWindow {

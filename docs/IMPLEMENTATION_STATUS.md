@@ -1,6 +1,6 @@
 # Implementation Status
 
-마지막 업데이트: 2026-05-31
+마지막 업데이트: 2026-06-01
 
 ## 구현 완료
 
@@ -25,6 +25,15 @@
 - `OPENAI_API_KEY` 또는 `CHATGPT_API_KEY` 사용
 - 로컬 개발 편의를 위한 bare `.env` key fallback
 - OpenAI 실패 시 휴리스틱 fallback
+
+### AI JSON schema validation
+
+- 허용되지 않은 classification, suggestion type, 빈 문자열, 잘못된 숫자를 앱 계약에 맞게 정규화합니다.
+- 날짜 필드는 실제 `Date`로 파싱 가능한 값만 통과시키고, 깨진 날짜 문자열은 `null`로 정리합니다.
+- 종료 시간이 시작 시간보다 빠르거나 같으면 종료 시간을 버립니다.
+- `confirmed_event`가 저장 가능한 시작 시간을 포함하지 않으면 `needs_more_info`로 낮추고 확인 질문을 생성합니다.
+- `negotiating_event`는 승인 전 `events`를 비우며, 참석자별 시간 제약이 없으면 `needs_more_info`로 낮춥니다.
+- `not_schedule_related` 응답은 일정/조율 데이터를 비웁니다.
 
 ### 일정 상태 분류
 
@@ -100,12 +109,19 @@
 - 불가능 시간 창을 후보에서 차감합니다.
 - 공통 후보가 있으면 `propose_time`, 없으면 `ask_follow_up`을 제안합니다.
 - OpenAI 응답이 suggestions를 누락해도 deterministic 제안을 보강합니다.
+- `토 2-4, 6-`처럼 끝 시간이 없는 fallback 시간 표현은 해당 날짜 끝까지 열려 있는 창으로 해석합니다.
+- `7시 전까지` 같은 이전/전까지 표현과 `하루종일` 표현을 fallback 파서가 처리합니다.
+- 오전/오후가 생략된 시간 표현은 제안의 `risk`에 확인 필요 문구로 표시합니다.
+- 후보가 여러 개이면 제안 메시지에 대안을 함께 표시합니다.
+- `토 2-4, 6- 일요일 8-9`처럼 한 줄에 여러 요일이 섞인 표현을 요일별 시간 창으로 분리합니다.
+- "안 되는 시간 다 보내주세요" 같은 앞 문맥이 있으면 뒤따르는 시간-only 답변을 불가능 시간으로 해석합니다.
+- `nextWeekdayIso`는 실행 환경의 로컬 타임존과 무관하게 Asia/Seoul 기준 요일을 유지하도록 보정했습니다.
 
 남은 작업:
 
-- "토 2-4, 6-"처럼 끝 시간이 없는 표현의 정책 정교화
-- 오전/오후가 생략된 시간의 신뢰도 표시
-- 후보가 여러 개일 때 우선순위와 대안 표시
+- 후보 우선순위를 사용자 선호 시간대나 참석자 중요도까지 반영
+- "일요일은 회의가 있긴 한데 시간이 미정"처럼 불확실한 불가능 시간의 신뢰도/질문 초안 강화
+- 오전/오후가 생략된 범위에서 `8-9`를 저녁으로 볼지 오전으로 볼지 문맥 기반으로 더 정교화
 
 추천 담당 이슈:
 
@@ -164,7 +180,7 @@
 
 ## 다음 에이전트가 바로 할 일
 
-1. Issue #2: OpenAI Responses API 전환 여부 검토와 schema validation 강화
+1. Issue #2: OpenAI Responses API strict JSON schema 전환 여부 검토
 2. Issue #3: 원격 PostgreSQL provisioning 문서 또는 스크립트 추가
 3. Issue #8: 끝 시간이 없는 시간 표현, 오전/오후 생략 신뢰도, 복수 후보 우선순위 고도화
 4. Issue #5: Service Worker 기반 background notification 검토
@@ -184,4 +200,4 @@ npm run typecheck
 npm run build
 ```
 
-둘 다 통과했습니다.
+셋 다 통과했습니다.

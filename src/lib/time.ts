@@ -49,12 +49,19 @@ export function getBaseDateKst() {
 
 export function nextWeekdayIso(weekday: number, hour: number, minute = 0) {
   const now = new Date();
-  const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  const daysAhead = (weekday - kstNow.getDay() + 7) % 7 || 7;
-  const target = new Date(kstNow);
-  target.setDate(kstNow.getDate() + daysAhead);
-  target.setHours(hour, minute, 0, 0);
-  const utcTime = target.getTime() - 9 * 60 * 60 * 1000;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric"
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  const kstMidnight = Date.UTC(year, month - 1, day);
+  const kstWeekday = new Date(kstMidnight).getUTCDay();
+  const daysAhead = (weekday - kstWeekday + 7) % 7 || 7;
+  const utcTime = Date.UTC(year, month - 1, day + daysAhead, hour - 9, minute, 0, 0);
   return new Date(utcTime).toISOString();
 }
 

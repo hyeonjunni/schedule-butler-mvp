@@ -5,6 +5,13 @@ import type { ExtractionPayload, InputType, TimeConstraint, TimeWindow } from ".
 
 const unavailablePattern = /(안\s*돼|안됨|안되|불가|못|어렵|애매)/;
 const availablePattern = /(가능|괜찮|됩니다|돼요|됩니다|할게|하자)/;
+const DAY_START_HOUR = 9;
+const DAY_END_HOUR = 23;
+const DAY_END_MINUTE = 59;
+const dayMentionPattern =
+  /(월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말|내일|월(?=\s|$|[0-9])|화(?=\s|$|[0-9])|수(?=\s|$|[0-9])|목(?=\s|$|[0-9])|금(?=\s|$|[0-9])|토(?=\s|$|[0-9])|일(?=\s|$|[0-9]))/g;
+
+type ConstraintIntent = "available" | "unavailable";
 
 export function heuristicExtract(rawText: string, inputType: InputType): ExtractionPayload {
   const lines = rawText
@@ -124,15 +131,31 @@ function parseSpeakerLines(lines: string[]) {
 
 function buildConstraints(lines: Array<{ person: string; text: string }>): TimeConstraint[] {
   const grouped = new Map<string, { available: TimeWindow[]; unavailable: TimeWindow[] }>();
+  let contextualIntent: ConstraintIntent | null = null;
+  let contextualBudget = 0;
+
   for (const line of lines) {
     const current = grouped.get(line.person) ?? { available: [], unavailable: [] };
     const windows = parseTimeWindows(line.text);
     const fallbackWindow = { start_at: null, end_at: null, text: line.text };
-    if (unavailablePattern.test(line.text)) {
+    const explicitIntent = inferExplicitIntent(line.text);
+    const intent = explicitIntent ?? (windows.length && contextualIntent ? contextualIntent : null);
+
+    if (intent === "unavailable") {
       current.unavailable.push(...(windows.length ? windows : [fallbackWindow]));
-    } else if (availablePattern.test(line.text)) {
+    } else if (intent === "available") {
       current.available.push(...(windows.length ? windows : [fallbackWindow]));
     }
+
+    const requestedIntent = inferRequestedIntent(line.text);
+    if (requestedIntent) {
+      contextualIntent = requestedIntent;
+      contextualBudget = 4;
+    } else if (!explicitIntent && windows.length && contextualBudget > 0) {
+      contextualBudget -= 1;
+      if (contextualBudget === 0) contextualIntent = null;
+    }
+
     grouped.set(line.person, current);
   }
 
@@ -144,20 +167,57 @@ function buildConstraints(lines: Array<{ person: string; text: string }>): TimeC
 }
 
 function parseTimeWindows(text: string): TimeWindow[] {
+  const segments = splitDaySegments(text);
+  if (segments.length > 1) {
+    return segments.flatMap((segment) => parseTimeWindowsForDay(segment.text, segment.day));
+  }
+
   const day = inferDay(text);
   if (day === null) return [];
+  return parseTimeWindowsForDay(text, day);
+}
+
+function parseTimeWindowsForDay(text: string, day: number): TimeWindow[] {
   const results: TimeWindow[] = [];
+  const allDayPattern = /(하루\s*종일|종일|언제든|다\s*가능|전부\s*가능)/;
+  const untilPattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*시?\s*(?:전까지|이전까지|전에는|전까진|전)/g;
   const rangePattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*(?:시)?\s*(?:부터|~|-|–|까지)\s*(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})?\s*시?/g;
   const singlePattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*시/g;
+
+  if (allDayPattern.test(text)) {
+    results.push({
+      start_at: nextWeekdayIso(day, DAY_START_HOUR),
+      end_at: nextWeekdayIso(day, DAY_END_HOUR, DAY_END_MINUTE),
+      text
+    });
+    return results;
+  }
+
+  for (const match of text.matchAll(untilPattern)) {
+    const endHour = normalizeHour(Number(match[2]), match[1] ?? text);
+    results.push({
+      start_at: nextWeekdayIso(day, DAY_START_HOUR),
+      end_at: nextWeekdayIso(day, endHour),
+      text: match[0].trim() || text
+    });
+  }
+
+  if (results.length) return results;
 
   for (const match of text.matchAll(rangePattern)) {
     const startHour = normalizeHour(Number(match[2]), match[1] ?? match[3] ?? text);
     const endHour = match[4] ? normalizeHour(Number(match[4]), match[3] ?? match[1] ?? text) : null;
-    const start = nextWeekdayIso(day, startHour);
+    const isUntilOnly = endHour === null && /까지/.test(match[0]) && !/부터/.test(match[0]);
+    const start = isUntilOnly ? nextWeekdayIso(day, DAY_START_HOUR) : nextWeekdayIso(day, startHour);
     results.push({
       start_at: start,
-      end_at: endHour === null ? null : nextWeekdayIso(day, endHour),
-      text
+      end_at:
+        endHour === null
+          ? isUntilOnly
+            ? nextWeekdayIso(day, startHour)
+            : nextWeekdayIso(day, DAY_END_HOUR, DAY_END_MINUTE)
+          : nextWeekdayIso(day, endHour),
+      text: match[0].trim() || text
     });
   }
 
@@ -169,14 +229,51 @@ function parseTimeWindows(text: string): TimeWindow[] {
     results.push({
       start_at: start,
       end_at: addHoursIso(start, 1),
-      text
+      text: match[0].trim() || text
     });
   }
 
   return results;
 }
 
+function splitDaySegments(text: string) {
+  const matches = [...text.matchAll(new RegExp(dayMentionPattern.source, "g"))];
+  if (matches.length <= 1) return [];
+
+  return matches
+    .map((match, index) => {
+      const start = match.index ?? 0;
+      const end = matches[index + 1]?.index ?? text.length;
+      const day = inferDay(match[0]);
+      return day === null ? null : { day, text: text.slice(start, end).trim() };
+    })
+    .filter((segment): segment is { day: number; text: string } => Boolean(segment?.text));
+}
+
+function inferExplicitIntent(text: string): ConstraintIntent | null {
+  if (unavailablePattern.test(text)) return "unavailable";
+  if (availablePattern.test(text)) return "available";
+  return null;
+}
+
+function inferRequestedIntent(text: string): ConstraintIntent | null {
+  if (/(안\s*되는\s*시간|안되는\s*시간|불가능한\s*시간|못\s*되는\s*시간).*(보내|알려|말해)/.test(text)) {
+    return "unavailable";
+  }
+  if (/(가능한\s*시간|되는\s*시간|가능\s*시간).*(보내|알려|말해)/.test(text)) {
+    return "available";
+  }
+  return null;
+}
+
 function inferDay(text: string) {
+  if (text.trim() === "토") return 6;
+  if (text.trim() === "일") return 0;
+  if (text.trim() === "금") return 5;
+  if (text.trim() === "목") return 4;
+  if (text.trim() === "수") return 3;
+  if (text.trim() === "화") return 2;
+  if (text.trim() === "월") return 1;
   if (/토요일|토\b|토\s/.test(text)) return 6;
   if (/일요일|일\b|일\s/.test(text)) return 0;
   if (/금요일|금\b|금\s/.test(text)) return 5;

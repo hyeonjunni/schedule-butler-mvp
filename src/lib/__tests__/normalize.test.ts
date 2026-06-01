@@ -30,13 +30,7 @@ describe("normalizeExtraction", () => {
     expect(payload.classification).toBe("needs_more_info");
     expect(payload.confidence).toBe(1);
     expect(payload.title).toBe("fallback title");
-    expect(payload.events[0]).toMatchObject({
-      title: "일정",
-      start_at: null,
-      end_at: null,
-      location: "강남역",
-      source_confidence: 0
-    });
+    expect(payload.events).toEqual([]);
     expect(payload.todos.map((todo) => todo.text)).toEqual(["자료 보내기", "할 일"]);
     expect(payload.checklist).toEqual(["노트북"]);
     expect(payload.participants).toEqual(["김시현"]);
@@ -81,5 +75,68 @@ describe("normalizeExtraction", () => {
 
     expect(payload.suggestions[0].type).toBe("propose_time");
     expect(payload.suggestions[0].candidate_start_at).toBeTruthy();
+  });
+
+  it("downgrades confirmed events with invalid or missing dates before they can be saved", () => {
+    const payload = normalizeExtraction({
+      classification: "confirmed_event",
+      confidence: 0.9,
+      title: "팀 회의",
+      events: [
+        {
+          title: "팀 회의",
+          start_at: "not-a-date",
+          end_at: "2026-06-01T14:00:00+09:00",
+          location: "강남역",
+          description: "날짜가 깨진 AI 응답",
+          source_confidence: 0.9
+        }
+      ],
+      suggestions: [
+        {
+          type: "register_event",
+          message: "등록할까요?",
+          candidate_start_at: "not-a-date",
+          candidate_end_at: "2026-06-01T14:00:00+09:00"
+        }
+      ]
+    });
+
+    expect(payload.classification).toBe("needs_more_info");
+    expect(payload.events).toEqual([]);
+    expect(payload.missing_fields).toContain("날짜");
+    expect(payload.missing_fields).toContain("시간");
+    expect(payload.suggestions[0].type).toBe("ask_follow_up");
+    expect(payload.suggestions[0].candidate_start_at).toBeNull();
+  });
+
+  it("prevents negotiating payloads from carrying event rows and asks for constraints when missing", () => {
+    const payload = normalizeExtraction({
+      classification: "negotiating_event",
+      confidence: 0.7,
+      title: "회의 조율",
+      events: [
+        {
+          title: "회의",
+          start_at: "2026-06-06T19:00:00+09:00",
+          end_at: "2026-06-06T20:00:00+09:00",
+          source_confidence: 0.7
+        }
+      ],
+      time_constraints: [],
+      suggestions: [
+        {
+          type: "propose_time",
+          message: "토요일 7시는 어떤가요?",
+          candidate_start_at: "2026-06-06T19:00:00+09:00",
+          candidate_end_at: "2026-06-06T18:00:00+09:00"
+        }
+      ]
+    });
+
+    expect(payload.classification).toBe("needs_more_info");
+    expect(payload.events).toEqual([]);
+    expect(payload.missing_fields).toContain("참석자별 가능 시간");
+    expect(payload.suggestions[0].candidate_end_at).toBeNull();
   });
 });
