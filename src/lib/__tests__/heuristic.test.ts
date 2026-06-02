@@ -39,4 +39,47 @@ describe("heuristicExtract", () => {
     expect(payload.todos.map((todo) => todo.text)).toContain("회의 자료 확인하고 예산안 작성해야 해");
     expect(payload.suggestions[0].type).toBe("create_todo");
   });
+
+  it("understands open-ended and before-deadline availability in chat text", () => {
+    const payload = heuristicExtract(
+      [
+        "조현준: 토요일 6시부터 가능",
+        "배민: 토요일 7시 전까지 안됨",
+        "김시현: 토요일 하루종일 가능"
+      ].join("\n"),
+      "kakao"
+    );
+
+    const candidate = payload.suggestions[0].candidate_start_at;
+    expect(payload.classification).toBe("negotiating_event");
+    expect(payload.suggestions[0].type).toBe("propose_time");
+    expect(candidate).toBeTruthy();
+    expect(kstHour(candidate!)).toBe(19);
+  });
+
+  it("keeps comma-separated open-ended ranges on the same weekday", () => {
+    const payload = heuristicExtract(
+      [
+        "나: 토 2-4, 6- 가능",
+        "친구: 토요일 7시부터 가능"
+      ].join("\n"),
+      "kakao"
+    );
+    const myConstraint = payload.time_constraints.find((constraint) => constraint.person === "나");
+
+    expect(myConstraint?.available).toHaveLength(2);
+    expect(kstHour(myConstraint!.available[0].start_at!)).toBe(14);
+    expect(kstHour(myConstraint!.available[1].start_at!)).toBe(18);
+    expect(kstHour(payload.suggestions[0].candidate_start_at!)).toBe(19);
+  });
 });
+
+function kstHour(value: string) {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Seoul",
+      hour: "numeric",
+      hour12: false
+    }).format(new Date(value))
+  );
+}

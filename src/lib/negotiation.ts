@@ -1,4 +1,5 @@
 import type { Suggestion, TimeConstraint, TimeWindow } from "./types";
+import { endOfKstDayIso } from "./time";
 
 const DEFAULT_DURATION_MINUTES = 60;
 const MIN_SLOT_MINUTES = 30;
@@ -146,7 +147,8 @@ function peopleWithAvailability(constraints: TimeConstraint[]) {
 function toInterval(window: TimeWindow, person: string): Interval | null {
   const start = parseDate(window.start_at);
   if (start === null) return null;
-  const end = parseDate(window.end_at) ?? start + DEFAULT_DURATION_MINUTES * 60 * 1000;
+  const end = parseDate(window.end_at) ?? parseDate(endOfKstDayIso(window.start_at!));
+  if (end === null) return null;
   if (end <= start) return null;
   return {
     start,

@@ -1,4 +1,4 @@
-import { addHoursIso, getBaseDateKst, nextWeekdayIso } from "./time";
+import { addHoursIso, endOfKstDayIso, getBaseDateKst, nextWeekdayIso, startOfKstDayIso } from "./time";
 import { recommendChecklist } from "./checklist";
 import { buildNegotiationSuggestion } from "./negotiation";
 import type { ExtractionPayload, InputType, TimeConstraint, TimeWindow } from "./types";
@@ -126,12 +126,14 @@ function buildConstraints(lines: Array<{ person: string; text: string }>): TimeC
   const grouped = new Map<string, { available: TimeWindow[]; unavailable: TimeWindow[] }>();
   for (const line of lines) {
     const current = grouped.get(line.person) ?? { available: [], unavailable: [] };
-    const windows = parseTimeWindows(line.text);
-    const fallbackWindow = { start_at: null, end_at: null, text: line.text };
-    if (unavailablePattern.test(line.text)) {
-      current.unavailable.push(...(windows.length ? windows : [fallbackWindow]));
-    } else if (availablePattern.test(line.text)) {
-      current.available.push(...(windows.length ? windows : [fallbackWindow]));
+    for (const text of splitConstraintClauses(line.text)) {
+      const windows = parseTimeWindows(text);
+      const fallbackWindow = { start_at: null, end_at: null, text };
+      if (unavailablePattern.test(text)) {
+        current.unavailable.push(...(windows.length ? windows : [fallbackWindow]));
+      } else if (availablePattern.test(text)) {
+        current.available.push(...(windows.length ? windows : [fallbackWindow]));
+      }
     }
     grouped.set(line.person, current);
   }
@@ -147,8 +149,32 @@ function parseTimeWindows(text: string): TimeWindow[] {
   const day = inferDay(text);
   if (day === null) return [];
   const results: TimeWindow[] = [];
+  const allDayPattern = /(하루\s*종일|종일)/;
+  const beforePattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*시?\s*(?:전까지|전까지는|전에는|이전까지|이전에는)/g;
   const rangePattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*(?:시)?\s*(?:부터|~|-|–|까지)\s*(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})?\s*시?/g;
   const singlePattern = /(?:(오전|오후|저녁|밤)\s*)?(\d{1,2})\s*시/g;
+
+  if (allDayPattern.test(text)) {
+    const start = nextWeekdayIso(day, 0);
+    results.push({
+      start_at: start,
+      end_at: endOfKstDayIso(start),
+      text
+    });
+    return results;
+  }
+
+  for (const match of text.matchAll(beforePattern)) {
+    const endHour = normalizeHour(Number(match[2]), match[1] ?? text);
+    const end = nextWeekdayIso(day, endHour);
+    results.push({
+      start_at: startOfKstDayIso(end),
+      end_at: end,
+      text
+    });
+  }
+
+  if (results.length) return results;
 
   for (const match of text.matchAll(rangePattern)) {
     const startHour = normalizeHour(Number(match[2]), match[1] ?? match[3] ?? text);
@@ -174,6 +200,14 @@ function parseTimeWindows(text: string): TimeWindow[] {
   }
 
   return results;
+}
+
+function splitConstraintClauses(text: string) {
+  return text
+    .replace(/\s+(?=(?:월요일|화요일|수요일|목요일|금요일|토요일|일요일|월\b|화\b|수\b|목\b|금\b|토\b|일\b))/g, "\n")
+    .split(/\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 function inferDay(text: string) {

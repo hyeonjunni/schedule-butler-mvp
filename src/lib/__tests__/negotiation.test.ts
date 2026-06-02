@@ -80,4 +80,37 @@ describe("buildNegotiationSuggestion", () => {
     expect(result.suggestion.type).toBe("ask_follow_up");
     expect(result.suggestion.risk).toContain("No slot satisfies");
   });
+
+  it("treats open-ended windows as available until the end of that KST day", () => {
+    const constraints: TimeConstraint[] = [
+      {
+        person: "조현준",
+        available: [
+          {
+            start_at: "2026-06-06T18:00:00+09:00",
+            end_at: null,
+            text: "토요일 6시부터 가능"
+          }
+        ],
+        unavailable: []
+      },
+      {
+        person: "김시현",
+        available: [
+          {
+            start_at: "2026-06-06T19:00:00+09:00",
+            end_at: "2026-06-06T21:00:00+09:00",
+            text: "토요일 7시부터 9시까지 가능"
+          }
+        ],
+        unavailable: []
+      }
+    ];
+
+    const result = buildNegotiationSuggestion(constraints);
+
+    expect(result.suggestion.type).toBe("propose_time");
+    expect(result.suggestion.candidate_start_at).toBe("2026-06-06T10:00:00.000Z");
+    expect(result.suggestion.candidate_end_at).toBe("2026-06-06T11:00:00.000Z");
+  });
 });
