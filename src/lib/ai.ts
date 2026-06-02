@@ -63,6 +63,7 @@ function buildSystemPrompt() {
 - 애매하거나 충돌하는 필드는 missing_fields 또는 suggestions[].risk에 적는다.
 - 참석자별 가능/불가능 시간은 time_constraints에 넣는다.
 - 미확정 회의는 바로 events에 확정 일정을 만들지 말고 suggestions에 제안 또는 추가 질문 초안을 넣는다.
+- 가능한 공통 시간이 여러 개면 suggestions에 우선순위대로 2~3개 후보를 넣는다.
 - checklist는 원문에 직접 나온 준비물뿐 아니라 일정 맥락상 자연스럽게 필요한 준비물을 3~8개 추천한다.
 - 야외 활동이면 썬크림, 물, 날씨 확인처럼 챙길 것을 추천한다.
 - 회의/발표/면접/운동/여행/병원/식사/통화 등 맥락별 준비물을 구체적으로 넣는다.

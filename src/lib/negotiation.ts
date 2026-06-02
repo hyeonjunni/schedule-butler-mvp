@@ -3,6 +3,7 @@ import { endOfKstDayIso } from "./time";
 
 const DEFAULT_DURATION_MINUTES = 60;
 const MIN_SLOT_MINUTES = 30;
+const MAX_SUGGESTIONS = 3;
 
 type Interval = {
   start: number;
@@ -20,6 +21,13 @@ export function buildNegotiationSuggestion(
   constraints: TimeConstraint[],
   durationMinutes = DEFAULT_DURATION_MINUTES
 ): NegotiationResult {
+  return buildNegotiationSuggestions(constraints, durationMinutes)[0];
+}
+
+export function buildNegotiationSuggestions(
+  constraints: TimeConstraint[],
+  durationMinutes = DEFAULT_DURATION_MINUTES
+): NegotiationResult[] {
   const availability = constraints.flatMap((constraint) =>
     constraint.available.flatMap((window) => {
       const interval = toInterval(window, constraint.person);
@@ -34,68 +42,73 @@ export function buildNegotiationSuggestion(
   );
 
   if (!availability.length) {
-    return {
-      candidate: null,
-      suggestion: {
-        type: "ask_follow_up",
-        message: "Common available time is still unclear. Ask everyone for date and time ranges.",
-        candidate_start_at: null,
-        candidate_end_at: null,
-        risk: "No concrete available time window was found."
+    return [
+      {
+        candidate: null,
+        suggestion: {
+          type: "ask_follow_up",
+          message: "Common available time is still unclear. Ask everyone for date and time ranges.",
+          candidate_start_at: null,
+          candidate_end_at: null,
+          risk: "No concrete available time window was found."
+        }
       }
-    };
+    ];
   }
 
   const requiredPeople = peopleWithAvailability(constraints);
   const candidates = findCommonCandidates(availability, unavailable, requiredPeople, durationMinutes);
-  const candidate = candidates[0] ?? null;
-
-  if (candidate) {
-    const window = intervalToWindow(candidate);
-    return {
-      candidate: window,
-      suggestion: {
-        type: "propose_time",
-        message: `A common slot is available: ${formatWindow(window)}. Shall I propose this time?`,
-        candidate_start_at: window.start_at,
-        candidate_end_at: window.end_at,
-        risk: candidate.texts.length ? candidate.texts.join(" / ") : null
-      }
-    };
+  if (candidates.length) {
+    return candidates.slice(0, MAX_SUGGESTIONS).map((candidate, index) => {
+      const window = intervalToWindow(candidate);
+      return {
+        candidate: window,
+        suggestion: {
+          type: "propose_time",
+          message: `공통 가능 후보 ${index + 1}: ${formatWindow(window)}. 이 시간으로 제안할까요?`,
+          candidate_start_at: window.start_at,
+          candidate_end_at: window.end_at,
+          risk: candidate.texts.length ? candidate.texts.join(" / ") : null
+        }
+      };
+    });
   }
 
   const fallback = availability.sort((a, b) => a.start - b.start)[0];
   const fallbackWindow = intervalToWindow(fallback);
   const conflicts = conflictTexts(unavailable, fallback);
 
-  return {
-    candidate: fallbackWindow,
-    suggestion: {
-      type: "ask_follow_up",
-      message: `The closest candidate is ${formatWindow(fallbackWindow)}, but it may not work for everyone. Ask for another option.`,
-      candidate_start_at: fallbackWindow.start_at,
-      candidate_end_at: fallbackWindow.end_at,
-      risk: conflicts.length
-        ? conflicts.join(" / ")
-        : "No slot satisfies every participant's available and unavailable windows."
+  return [
+    {
+      candidate: fallbackWindow,
+      suggestion: {
+        type: "ask_follow_up",
+        message: `The closest candidate is ${formatWindow(fallbackWindow)}, but it may not work for everyone. Ask for another option.`,
+        candidate_start_at: fallbackWindow.start_at,
+        candidate_end_at: fallbackWindow.end_at,
+        risk: conflicts.length
+          ? conflicts.join(" / ")
+          : "No slot satisfies every participant's available and unavailable windows."
+      }
     }
-  };
+  ];
 }
 
 export function enhanceNegotiationConstraints<T extends { time_constraints: TimeConstraint[]; suggestions: Suggestion[] }>(
   payload: T
 ): T {
   if (!payload.time_constraints.length) return payload;
-  const { suggestion } = buildNegotiationSuggestion(payload.time_constraints);
+  const suggestions = buildNegotiationSuggestions(payload.time_constraints).map((result) => result.suggestion);
+  const hasGeneratedPropose = suggestions.some((item) => item.type === "propose_time");
   const hasConcreteSuggestion = payload.suggestions.some(
     (item) => item.candidate_start_at && item.type === "propose_time"
   );
 
-  if (hasConcreteSuggestion && suggestion.type !== "propose_time") return payload;
+  if (hasConcreteSuggestion && !hasGeneratedPropose) return payload;
 
   return {
     ...payload,
-    suggestions: [suggestion, ...payload.suggestions.filter((item) => item.message !== suggestion.message)]
+    suggestions: uniqueSuggestions([...suggestions, ...payload.suggestions])
   };
 }
 
@@ -125,12 +138,18 @@ function findCommonCandidates(
     const blocked = unavailable.filter((interval) => overlaps(interval, { start, end, people, texts: [] }));
     if (blocked.length) continue;
 
-    results.push({
-      start,
-      end: start + durationMinutes * 60 * 1000 <= end ? start + durationMinutes * 60 * 1000 : end,
-      people,
-      texts: covering.map((interval) => interval.texts).flat()
-    });
+    for (
+      let slotStart = start;
+      slotStart + durationMinutes * 60 * 1000 <= end;
+      slotStart += durationMinutes * 60 * 1000
+    ) {
+      results.push({
+        start: slotStart,
+        end: slotStart + durationMinutes * 60 * 1000,
+        people,
+        texts: covering.map((interval) => interval.texts).flat()
+      });
+    }
   }
 
   return mergeAdjacent(results);
@@ -177,6 +196,23 @@ function overlaps(a: Interval, b: Interval) {
 
 function mergeAdjacent(intervals: Interval[]) {
   return intervals.sort((a, b) => a.start - b.start);
+}
+
+function uniqueSuggestions(suggestions: Suggestion[]) {
+  const seen = new Set<string>();
+  let proposeCount = 0;
+  return suggestions.filter((suggestion) => {
+    if (suggestion.type === "propose_time" && suggestion.candidate_start_at) {
+      if (proposeCount >= MAX_SUGGESTIONS) return false;
+      proposeCount += 1;
+    }
+    const key = suggestion.candidate_start_at
+      ? [suggestion.type, suggestion.candidate_start_at, suggestion.candidate_end_at ?? ""].join("|")
+      : [suggestion.type, suggestion.message].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function intervalToWindow(interval: Interval): TimeWindow {

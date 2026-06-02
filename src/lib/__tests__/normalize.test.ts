@@ -161,4 +161,89 @@ describe("normalizeExtraction", () => {
     expect(payload.suggestions[0].type).toBe("propose_time");
     expect(payload.suggestions[0].candidate_start_at).toBeTruthy();
   });
+
+  it("adds multiple deterministic negotiation suggestions when the common window is long", () => {
+    const payload = normalizeExtraction({
+      classification: "negotiating_event",
+      confidence: 0.8,
+      title: "회의 조율",
+      time_constraints: [
+        {
+          person: "김시현",
+          available: [
+            {
+              start_at: "2026-06-06T14:00:00+09:00",
+              end_at: "2026-06-06T18:00:00+09:00",
+              text: "토요일 2시부터 6시까지 가능"
+            }
+          ],
+          unavailable: []
+        },
+        {
+          person: "조현준",
+          available: [
+            {
+              start_at: "2026-06-06T14:00:00+09:00",
+              end_at: "2026-06-06T18:00:00+09:00",
+              text: "토요일 2시부터 6시까지 가능"
+            }
+          ],
+          unavailable: []
+        }
+      ],
+      suggestions: []
+    });
+
+    const proposed = payload.suggestions.filter((suggestion) => suggestion.type === "propose_time");
+    expect(proposed).toHaveLength(3);
+  });
+
+  it("deduplicates AI and deterministic proposals by candidate time", () => {
+    const payload = normalizeExtraction({
+      classification: "negotiating_event",
+      confidence: 0.8,
+      title: "회의 조율",
+      time_constraints: [
+        {
+          person: "김시현",
+          available: [
+            {
+              start_at: "2026-06-06T14:00:00+09:00",
+              end_at: "2026-06-06T18:00:00+09:00",
+              text: "토요일 2시부터 6시까지 가능"
+            }
+          ],
+          unavailable: []
+        },
+        {
+          person: "조현준",
+          available: [
+            {
+              start_at: "2026-06-06T14:00:00+09:00",
+              end_at: "2026-06-06T18:00:00+09:00",
+              text: "토요일 2시부터 6시까지 가능"
+            }
+          ],
+          unavailable: []
+        }
+      ],
+      suggestions: [
+        {
+          type: "propose_time",
+          message: "AI가 낸 같은 후보",
+          candidate_start_at: "2026-06-06T14:00:00+09:00",
+          candidate_end_at: "2026-06-06T15:00:00+09:00",
+          risk: null
+        }
+      ]
+    });
+
+    const proposed = payload.suggestions.filter((suggestion) => suggestion.type === "propose_time");
+    expect(proposed).toHaveLength(3);
+    expect(proposed.map((suggestion) => suggestion.candidate_start_at)).toEqual([
+      "2026-06-06T05:00:00.000Z",
+      "2026-06-06T06:00:00.000Z",
+      "2026-06-06T07:00:00.000Z"
+    ]);
+  });
 });
