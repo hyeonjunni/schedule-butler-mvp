@@ -96,7 +96,6 @@ export default function Home() {
     () => state.drafts.filter((draft) => draft.status === "pending"),
     [state.drafts]
   );
-  const todayEvents = useMemo(() => state.events.slice(0, 8), [state.events]);
 
   async function refreshState() {
     const response = await fetch("/api/state");
@@ -277,7 +276,7 @@ export default function Home() {
             />
           ) : null}
 
-          {tab === "calendar" ? <CalendarPanel events={todayEvents} checklist={state.checklistItems} /> : null}
+          {tab === "calendar" ? <CalendarPanel events={state.events} checklist={state.checklistItems} /> : null}
 
           {tab === "todos" ? (
             <TodoPanel todos={state.todos} checklist={state.checklistItems} toggleItem={toggleItem} />
@@ -531,12 +530,65 @@ function CalendarPanel({
   events: AppState["events"];
   checklist: StoredChecklistItem[];
 }) {
-  if (!events.length) {
-    return <EmptyState icon={CalendarDays} title="등록된 일정 없음" text="승인된 일정이 캘린더에 표시됩니다." />;
-  }
+  const [view, setView] = useState<"today" | "week">("today");
+  const todayEvents = useMemo(() => events.filter(isTodayEvent).slice(0, 12), [events]);
+  const weekDays = useMemo(() => buildWeekDays(events), [events]);
+  const visibleEvents = view === "today" ? todayEvents : events.filter(isThisWeekEvent);
 
   return (
     <div className="stack">
+      <div className="segmented calendarSwitch">
+        <button type="button" className={view === "today" ? "selected" : ""} onClick={() => setView("today")}>
+          오늘
+        </button>
+        <button type="button" className={view === "week" ? "selected" : ""} onClick={() => setView("week")}>
+          이번 주
+        </button>
+      </div>
+
+      <div className="calendarSummary">
+        <span>{view === "today" ? "오늘 일정" : "이번 주 일정"}</span>
+        <strong>{visibleEvents.length}개</strong>
+      </div>
+
+      {view === "today" ? (
+        todayEvents.length ? (
+          <EventList events={todayEvents} checklist={checklist} />
+        ) : (
+          <EmptyState icon={CalendarDays} title="오늘 일정 없음" text="이번 주 탭에서 다른 날짜 일정을 확인할 수 있습니다." />
+        )
+      ) : (
+        <div className="weekList">
+          {weekDays.map((day) => (
+            <section key={day.key} className="weekDay">
+              <div className="weekDayHeader">
+                <strong>{day.label}</strong>
+                <span>{day.events.length}개</span>
+              </div>
+              {day.events.length ? (
+                <EventList events={day.events} checklist={checklist} compact />
+              ) : (
+                <p className="weekEmpty">등록된 일정이 없습니다.</p>
+              )}
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EventList({
+  events,
+  checklist,
+  compact = false
+}: {
+  events: AppState["events"];
+  checklist: StoredChecklistItem[];
+  compact?: boolean;
+}) {
+  return (
+    <div className={compact ? "eventList compact" : "eventList"}>
       {events.map((event) => (
         <article key={event.id} className="eventCard">
           <div className="dateChip">
@@ -545,11 +597,11 @@ function CalendarPanel({
           </div>
           <h2>{event.title}</h2>
           {event.location ? <p className="summary">{event.location}</p> : null}
-          {event.description ? <p className="description">{event.description}</p> : null}
+          {event.description && !compact ? <p className="description">{event.description}</p> : null}
           <div className="miniList">
             {checklist
               .filter((item) => item.event_id === event.id)
-              .slice(0, 4)
+              .slice(0, compact ? 2 : 4)
               .map((item) => (
                 <span key={item.id}>{item.text}</span>
               ))}
@@ -717,6 +769,90 @@ function candidateEventFromSuggestion(
     description: payload.raw_summary,
     source_confidence: payload.confidence
   };
+}
+
+function buildWeekDays(events: AppState["events"]) {
+  const weekStart = getKstWeekStart();
+  const weekEvents = events.filter(isThisWeekEvent).sort(compareEventStart);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart);
+    date.setUTCDate(weekStart.getUTCDate() + index);
+    const key = date.toISOString().slice(0, 10);
+    return {
+      key,
+      label: formatKstDayLabel(date),
+      events: weekEvents.filter((event) => getKstDayKey(event.start_at) === key)
+    };
+  });
+}
+
+function isTodayEvent(event: AppState["events"][number]) {
+  return getKstDayKey(event.start_at) === getKstDayKey(new Date());
+}
+
+function isThisWeekEvent(event: AppState["events"][number]) {
+  const key = getKstDayKey(event.start_at);
+  if (!key) return false;
+  const weekStart = getKstWeekStart().toISOString().slice(0, 10);
+  const weekEnd = new Date(getKstWeekStart());
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  return key >= weekStart && key <= weekEnd.toISOString().slice(0, 10);
+}
+
+function compareEventStart(a: AppState["events"][number], b: AppState["events"][number]) {
+  return eventTime(a) - eventTime(b);
+}
+
+function eventTime(event: AppState["events"][number]) {
+  const time = event.start_at ? new Date(event.start_at).getTime() : Number.POSITIVE_INFINITY;
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+}
+
+function getKstWeekStart() {
+  const date = getKstCalendarDate(new Date());
+  const mondayOffset = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - mondayOffset);
+  return date;
+}
+
+function getKstCalendarDate(value: Date) {
+  const parts = getKstDateParts(value);
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+}
+
+function getKstDayKey(value: string | Date | null) {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = getKstDateParts(date);
+  return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`;
+}
+
+function getKstDateParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value)
+  };
+}
+
+function formatKstDayLabel(date: Date) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    weekday: "short",
+    month: "numeric",
+    day: "numeric"
+  }).format(date);
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
 }
 
 function splitLines(value: string) {

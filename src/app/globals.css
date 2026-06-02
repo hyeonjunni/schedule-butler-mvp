@@ -212,6 +212,10 @@ h2 {
   color: var(--teal);
 }
 
+.calendarSwitch {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .rawInput,
 .formGrid textarea,
 .formGrid input {
@@ -461,6 +465,32 @@ h2 {
   background: var(--paper);
 }
 
+.calendarSummary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.calendarSummary strong {
+  color: var(--teal);
+}
+
+.eventList,
+.weekList {
+  display: grid;
+  gap: 10px;
+}
+
+.eventList.compact {
+  gap: 8px;
+}
+
 .eventCard {
   display: grid;
   gap: 8px;
@@ -483,6 +513,39 @@ h2 {
   color: #74520d;
   font-size: 12px;
   font-weight: 800;
+}
+
+.weekDay {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.weekDayHeader {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.weekDayHeader strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.weekDayHeader span,
+.weekEmpty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.weekEmpty {
+  padding: 6px 2px 8px;
 }
 
 .todoList {
