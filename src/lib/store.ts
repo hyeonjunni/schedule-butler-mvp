@@ -138,9 +138,9 @@ export async function updateNotificationStatus(
 }
 
 function buildEvent(draftId: string, payload: ExtractionPayload): StoredEvent | null {
+  if (payload.classification !== "confirmed_event") return null;
   const candidate = payload.events[0];
-  if (!candidate || !candidate.title) return null;
-  if (payload.classification === "negotiating_event" && !candidate.start_at) return null;
+  if (!candidate || !candidate.title || !candidate.start_at) return null;
 
   return {
     id: crypto.randomUUID(),

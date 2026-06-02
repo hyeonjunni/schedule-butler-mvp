@@ -15,6 +15,12 @@ const classifications: Classification[] = [
   "todo_only",
   "not_schedule_related"
 ];
+const suggestionTypes: Suggestion["type"][] = [
+  "register_event",
+  "propose_time",
+  "ask_follow_up",
+  "create_todo"
+];
 
 export function normalizeExtraction(input: unknown, fallbackTitle = "일정 후보"): ExtractionPayload {
   const source = isRecord(input) ? input : {};
@@ -46,15 +52,17 @@ export function normalizeExtraction(input: unknown, fallbackTitle = "일정 후�
       .filter(Boolean)
   };
 
-  return enhanceNegotiationConstraints(repairPastScheduleDates(normalized));
+  return enforceSchemaRules(enhanceNegotiationConstraints(repairPastScheduleDates(normalized)));
 }
 
 function normalizeEvent(value: unknown): EventCandidate | null {
   if (!isRecord(value)) return null;
+  const startAt = nullableIsoString(value.start_at);
+  const endAt = normalizeEndAt(startAt, nullableIsoString(value.end_at));
   return {
     title: stringValue(value.title, "일정"),
-    start_at: nullableString(value.start_at),
-    end_at: nullableString(value.end_at),
+    start_at: startAt,
+    end_at: endAt,
     location: nullableString(value.location),
     description: nullableString(value.description),
     source_confidence: clampNumber(value.source_confidence, 0.7)
@@ -68,7 +76,7 @@ function normalizeTodo(value: unknown): TodoCandidate | null {
   }
   return {
     text: stringValue(value.text, "할 일"),
-    due_at: nullableString(value.due_at),
+    due_at: nullableIsoString(value.due_at),
     source_confidence: clampNumber(value.source_confidence, 0.7)
   };
 }
@@ -84,22 +92,27 @@ function normalizeConstraint(value: unknown): TimeConstraint {
 
 function normalizeWindow(value: unknown) {
   const record = isRecord(value) ? value : {};
+  const startAt = nullableIsoString(record.start_at);
+  const endAt = normalizeEndAt(startAt, nullableIsoString(record.end_at));
   return {
-    start_at: nullableString(record.start_at),
-    end_at: nullableString(record.end_at),
+    start_at: startAt,
+    end_at: endAt,
     text: stringValue(record.text, "")
   };
 }
 
 function normalizeSuggestion(value: unknown): Suggestion {
   const record = isRecord(value) ? value : {};
-  const allowed = ["register_event", "propose_time", "ask_follow_up", "create_todo"];
-  const type = allowed.includes(String(record.type)) ? String(record.type) : "ask_follow_up";
+  const type = suggestionTypes.includes(record.type as Suggestion["type"])
+    ? (record.type as Suggestion["type"])
+    : "ask_follow_up";
+  const candidateStartAt = nullableIsoString(record.candidate_start_at);
+  const candidateEndAt = normalizeEndAt(candidateStartAt, nullableIsoString(record.candidate_end_at));
   return {
-    type: type as Suggestion["type"],
+    type,
     message: stringValue(record.message, "추가 확인이 필요합니다."),
-    candidate_start_at: nullableString(record.candidate_start_at),
-    candidate_end_at: nullableString(record.candidate_end_at),
+    candidate_start_at: candidateStartAt,
+    candidate_end_at: candidateEndAt,
     risk: nullableString(record.risk)
   };
 }
@@ -120,9 +133,83 @@ function nullableString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function nullableIsoString(value: unknown) {
+  const text = nullableString(value);
+  if (!text) return null;
+  return Number.isNaN(new Date(text).getTime()) ? null : text;
+}
+
+function normalizeEndAt(startAt: string | null, endAt: string | null) {
+  if (!endAt) return null;
+  if (!startAt) return endAt;
+  return new Date(endAt).getTime() > new Date(startAt).getTime() ? endAt : null;
+}
+
 function clampNumber(value: unknown, fallback: number) {
   if (typeof value !== "number" || Number.isNaN(value)) return fallback;
   return Math.min(1, Math.max(0, value));
+}
+
+function enforceSchemaRules(payload: ExtractionPayload): ExtractionPayload {
+  const normalized: ExtractionPayload = {
+    ...payload,
+    checklist: uniqueStrings(payload.checklist),
+    participants: uniqueStrings(payload.participants),
+    missing_fields: uniqueStrings(payload.missing_fields),
+    time_constraints: payload.time_constraints.filter(
+      (constraint) => constraint.available.length || constraint.unavailable.length
+    )
+  };
+
+  if (normalized.classification === "confirmed_event") {
+    const validEvents = normalized.events.filter((event) => event.title && event.start_at);
+    if (validEvents.length) return { ...normalized, events: validEvents };
+    return {
+      ...normalized,
+      classification: "needs_more_info",
+      events: [],
+      assistant_message: "날짜와 시간이 부족해서 바로 등록할 수 없습니다. 추가 확인이 필요합니다.",
+      suggestions: ensureAskFollowUp(
+        normalized.suggestions,
+        "일정으로 등록하려면 정확한 날짜와 시간을 먼저 확인해야 합니다.",
+        "confirmed_event 응답에 유효한 start_at이 없습니다."
+      ),
+      missing_fields: uniqueStrings([...normalized.missing_fields, "날짜/시간"])
+    };
+  }
+
+  if (normalized.classification === "negotiating_event") {
+    return {
+      ...normalized,
+      events: [],
+      missing_fields: uniqueStrings([...normalized.missing_fields, "최종 승인"])
+    };
+  }
+
+  if (normalized.classification === "todo_only" || normalized.classification === "not_schedule_related") {
+    return { ...normalized, events: [] };
+  }
+
+  return normalized;
+}
+
+function ensureAskFollowUp(suggestions: Suggestion[], message: string, risk: string): Suggestion[] {
+  if (suggestions.some((suggestion) => suggestion.type === "ask_follow_up")) return suggestions;
+  const followUp: Suggestion = {
+    type: "ask_follow_up",
+    message,
+    candidate_start_at: null,
+    candidate_end_at: null,
+    risk
+  };
+  return [
+    followUp,
+    ...suggestions
+  ];
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 function repairPastScheduleDates(payload: ExtractionPayload): ExtractionPayload {

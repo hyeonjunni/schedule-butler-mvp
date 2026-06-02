@@ -103,7 +103,9 @@ Frontend는 AI 결과를 아래 액션 중 하나로 처리합니다.
 ## 핵심 제약
 
 - `classification`이 `negotiating_event` 또는 `needs_more_info`이면 바로 `Event`를 만들지 않습니다.
+- `confirmed_event`라도 유효한 `events[0].start_at`이 없으면 앱이 `needs_more_info`로 낮춥니다.
 - 날짜가 상대 표현이면 서버 기준 날짜와 타임존 `Asia/Seoul`을 사용해 정규화합니다.
+- 날짜 필드는 JavaScript `Date`로 파싱 가능한 ISO 계열 문자열이어야 하며, 파싱 불가 값은 `null`로 정리됩니다.
 - 신뢰도가 낮은 필드는 `missing_fields` 또는 `risk`에 명시합니다.
 - `checklist`는 원문에 직접 나온 준비물과 문맥상 자연스러운 추천 준비물을 함께 포함합니다.
 

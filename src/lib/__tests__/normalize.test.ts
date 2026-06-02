@@ -47,6 +47,85 @@ describe("normalizeExtraction", () => {
     expect(payload.missing_fields).toEqual(["시간"]);
   });
 
+  it("downgrades unsafe confirmed events without a valid start time", () => {
+    const payload = normalizeExtraction({
+      classification: "confirmed_event",
+      confidence: 0.9,
+      title: "팀 회의",
+      assistant_message: "팀 회의로 등록할까요?",
+      events: [
+        {
+          title: "팀 회의",
+          start_at: "tomorrow afternoon",
+          end_at: "2026-06-01T14:00:00+09:00",
+          location: null,
+          description: null,
+          source_confidence: 0.9
+        }
+      ],
+      suggestions: [
+        {
+          type: "register_event",
+          message: "팀 회의로 등록할까요?",
+          candidate_start_at: "not-a-date",
+          candidate_end_at: null,
+          risk: null
+        }
+      ],
+      missing_fields: []
+    });
+
+    expect(payload.classification).toBe("needs_more_info");
+    expect(payload.events).toEqual([]);
+    expect(payload.suggestions[0]).toMatchObject({
+      type: "ask_follow_up",
+      candidate_start_at: null
+    });
+    expect(payload.missing_fields).toContain("날짜/시간");
+  });
+
+  it("nulls invalid date strings before negotiation enhancement", () => {
+    const payload = normalizeExtraction({
+      classification: "negotiating_event",
+      confidence: 0.7,
+      title: "회의 조율",
+      time_constraints: [
+        {
+          person: "김시현",
+          available: [
+            {
+              start_at: "bad-date",
+              end_at: "also-bad",
+              text: "토요일 오후 가능"
+            }
+          ],
+          unavailable: []
+        }
+      ],
+      suggestions: [
+        {
+          type: "propose_time",
+          message: "토요일 오후는 어떤가요?",
+          candidate_start_at: "bad-date",
+          candidate_end_at: "also-bad",
+          risk: null
+        }
+      ]
+    });
+
+    expect(payload.events).toEqual([]);
+    expect(payload.time_constraints[0].available[0]).toMatchObject({
+      start_at: null,
+      end_at: null
+    });
+    expect(payload.suggestions[0]).toMatchObject({
+      type: "ask_follow_up",
+      candidate_start_at: null,
+      candidate_end_at: null
+    });
+    expect(payload.missing_fields).toContain("최종 승인");
+  });
+
   it("adds a deterministic negotiation suggestion when AI omits suggestions", () => {
     const payload = normalizeExtraction({
       classification: "negotiating_event",

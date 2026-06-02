@@ -25,6 +25,9 @@
 - `OPENAI_API_KEY` 또는 `CHATGPT_API_KEY` 사용
 - 로컬 개발 편의를 위한 bare `.env` key fallback
 - OpenAI 실패 시 휴리스틱 fallback
+- invalid classification, 숫자 범위, 배열 타입, suggestion type, ISO 날짜 필드 schema normalization
+- `confirmed_event`라도 유효한 시작 시간이 없으면 `needs_more_info`로 낮추는 안전장치
+- `confirmed_event`가 아닌 draft는 실수로 events를 포함해도 DB `Event`로 저장하지 않는 저장소 안전장치
 
 ### 일정 상태 분류
 
@@ -165,7 +168,7 @@
 
 ## 다음 에이전트가 바로 할 일
 
-1. Issue #2: OpenAI Responses API 전환 여부 검토와 schema validation 강화
+1. Issue #2: OpenAI Responses API 전환 여부 검토
 2. Issue #3: 원격 PostgreSQL provisioning 문서 또는 스크립트 추가
 3. Issue #8: 끝 시간이 없는 시간 표현, 오전/오후 생략 신뢰도, 복수 후보 우선순위 고도화
 4. Issue #5: Service Worker 기반 background notification 검토
