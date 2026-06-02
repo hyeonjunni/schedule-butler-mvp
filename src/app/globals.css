@@ -452,6 +452,10 @@ h2 {
   font-weight: 850;
 }
 
+.suggestion .replyCopyButton {
+  width: max-content;
+}
+
 .suggestion.selected button {
   background: rgba(43, 138, 138, 0.12);
 }

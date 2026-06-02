@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  Copy,
   Database,
   ListTodo,
   MessageCircle,
@@ -184,6 +185,15 @@ export default function Home() {
     setNotice(permission === "granted" ? "브라우저 알림 권한이 켜졌습니다." : "알림 권한이 허용되지 않았습니다.");
   }
 
+  async function copyReplyDraft(message: string) {
+    try {
+      await navigator.clipboard.writeText(message);
+      setNotice("메신저 답장 초안을 복사했습니다.");
+    } catch {
+      setNotice("클립보드 복사에 실패했습니다. 답장 초안을 직접 선택해서 복사해 주세요.");
+    }
+  }
+
   async function processDueNotifications(nextState: AppState) {
     const dueNotifications = nextState.notifications.filter((notification) => {
       if (notification.status !== "scheduled" || !notification.notify_at) return false;
@@ -271,6 +281,7 @@ export default function Home() {
               loading={loading}
               setCurrentDraft={setCurrentDraft}
               setEventForm={setEventForm}
+              copyReplyDraft={copyReplyDraft}
               approve={approve}
               rejectDraft={rejectDraft}
             />
@@ -345,6 +356,7 @@ function DraftPanel({
   loading,
   setCurrentDraft,
   setEventForm,
+  copyReplyDraft,
   approve,
   rejectDraft
 }: {
@@ -354,6 +366,7 @@ function DraftPanel({
   loading: boolean;
   setCurrentDraft: (draft: ExtractionDraft) => void;
   setEventForm: (form: EventForm) => void;
+  copyReplyDraft: (message: string) => void;
   approve: (mode: "event" | "draft") => void;
   rejectDraft: () => void;
 }) {
@@ -406,6 +419,7 @@ function DraftPanel({
               description: eventForm.description.trim() || draft.payload.raw_summary
             })
           }
+          copyReplyDraft={(suggestion) => copyReplyDraft(buildReplyDraft(suggestion))}
         />
       ) : null}
 
@@ -518,11 +532,13 @@ function ConstraintLine({
 function Suggestions({
   payload,
   eventForm,
-  selectSuggestion
+  selectSuggestion,
+  copyReplyDraft
 }: {
   payload: ExtractionPayload;
   eventForm: EventForm;
   selectSuggestion: (suggestion: ExtractionPayload["suggestions"][number]) => void;
+  copyReplyDraft: (suggestion: ExtractionPayload["suggestions"][number]) => void;
 }) {
   return (
     <section className="panel">
@@ -546,7 +562,17 @@ function Suggestions({
                     {selected ? <Check size={14} /> : <Clock3 size={14} />}
                     {selected ? "선택됨" : "후보 선택"}
                   </button>
+                  <button type="button" onClick={() => copyReplyDraft(suggestion)}>
+                    <Copy size={14} />
+                    답장 복사
+                  </button>
                 </div>
+              ) : null}
+              {!suggestion.candidate_start_at ? (
+                <button className="replyCopyButton" type="button" onClick={() => copyReplyDraft(suggestion)}>
+                  <Copy size={14} />
+                  답장 복사
+                </button>
               ) : null}
               {suggestion.risk ? <small>{suggestion.risk}</small> : null}
             </div>
@@ -803,6 +829,16 @@ function candidateEventFromSuggestion(
     description: payload.raw_summary,
     source_confidence: payload.confidence
   };
+}
+
+function buildReplyDraft(suggestion: ExtractionPayload["suggestions"][number]) {
+  if (suggestion.type === "propose_time" && suggestion.candidate_start_at) {
+    const windowText = suggestion.candidate_end_at
+      ? `${formatKoreanDateTime(suggestion.candidate_start_at)} - ${formatKoreanDateTime(suggestion.candidate_end_at)}`
+      : formatKoreanDateTime(suggestion.candidate_start_at);
+    return `가능한 시간을 정리해보니 ${windowText}가 후보로 보입니다. 이 시간 괜찮으실까요?`;
+  }
+  return suggestion.message;
 }
 
 function buildWeekDays(events: AppState["events"]) {
