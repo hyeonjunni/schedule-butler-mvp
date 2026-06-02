@@ -417,12 +417,43 @@ h2 {
   line-height: 1.45;
 }
 
+.suggestion.selected {
+  border: 1px solid rgba(43, 138, 138, 0.32);
+  background: rgba(43, 138, 138, 0.09);
+}
+
+.suggestionMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .suggestion span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--blue);
   font-weight: 800;
+}
+
+.suggestion button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(43, 138, 138, 0.34);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.suggestion.selected button {
+  background: rgba(43, 138, 138, 0.12);
 }
 
 .suggestion small {

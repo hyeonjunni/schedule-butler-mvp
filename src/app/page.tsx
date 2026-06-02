@@ -393,7 +393,21 @@ function DraftPanel({
       </section>
 
       {draft.payload.time_constraints.length ? <Constraints constraints={draft.payload.time_constraints} /> : null}
-      {draft.payload.suggestions.length ? <Suggestions payload={draft.payload} /> : null}
+      {draft.payload.suggestions.length ? (
+        <Suggestions
+          payload={draft.payload}
+          eventForm={eventForm}
+          selectSuggestion={(suggestion) =>
+            setEventForm({
+              ...eventForm,
+              title: eventForm.title.trim() || draft.payload.title,
+              startAt: toLocalDateInputValue(suggestion.candidate_start_at),
+              endAt: toLocalDateInputValue(suggestion.candidate_end_at),
+              description: eventForm.description.trim() || draft.payload.raw_summary
+            })
+          }
+        />
+      ) : null}
 
       <section className="panel">
         <h2>등록 내용</h2>
@@ -501,23 +515,43 @@ function ConstraintLine({
   );
 }
 
-function Suggestions({ payload }: { payload: ExtractionPayload }) {
+function Suggestions({
+  payload,
+  eventForm,
+  selectSuggestion
+}: {
+  payload: ExtractionPayload;
+  eventForm: EventForm;
+  selectSuggestion: (suggestion: ExtractionPayload["suggestions"][number]) => void;
+}) {
   return (
     <section className="panel">
       <h2>제안</h2>
       <div className="suggestionList">
-        {payload.suggestions.map((suggestion, index) => (
-          <div key={`${suggestion.type}-${index}`} className="suggestion">
-            <p>{suggestion.message}</p>
-            {suggestion.candidate_start_at ? (
-              <span>
-                <Clock3 size={14} />
-                {formatKoreanDateTime(suggestion.candidate_start_at)}
-              </span>
-            ) : null}
-            {suggestion.risk ? <small>{suggestion.risk}</small> : null}
-          </div>
-        ))}
+        {payload.suggestions.map((suggestion, index) => {
+          const selected =
+            Boolean(suggestion.candidate_start_at) &&
+            eventForm.startAt === toLocalDateInputValue(suggestion.candidate_start_at) &&
+            eventForm.endAt === toLocalDateInputValue(suggestion.candidate_end_at);
+          return (
+            <div key={`${suggestion.type}-${index}`} className={selected ? "suggestion selected" : "suggestion"}>
+              <p>{suggestion.message}</p>
+              {suggestion.candidate_start_at ? (
+                <div className="suggestionMeta">
+                  <span>
+                    <Clock3 size={14} />
+                    {formatKoreanDateTime(suggestion.candidate_start_at)}
+                  </span>
+                  <button type="button" onClick={() => selectSuggestion(suggestion)}>
+                    {selected ? <Check size={14} /> : <Clock3 size={14} />}
+                    {selected ? "선택됨" : "후보 선택"}
+                  </button>
+                </div>
+              ) : null}
+              {suggestion.risk ? <small>{suggestion.risk}</small> : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
