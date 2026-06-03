@@ -26,6 +26,7 @@
 - 승인/수정/취소 플로우
 - 승인된 일정, TODO, 체크리스트 DB 저장
 - 오늘 일정, 이번 주 일정, TODO 리스트 화면
+- 승인된 일정의 `.ics` 캘린더 파일 다운로드
 - 앱 내부 알림 및 브라우저 알림 기반 30분 전 알림
 
 제외:
@@ -79,6 +80,7 @@ AI 판단:
 - [구현 상태와 에이전트 핸드오프](docs/IMPLEMENTATION_STATUS.md)
 - [서버 배포 제한](docs/DEPLOYMENT_CONSTRAINTS.md)
 - [AI 추출 계약](docs/AI_EXTRACTION_CONTRACT.md)
+- [발표용 GPT 프롬프트/파이프라인](docs/PRESENTATION_PIPELINE.md)
 - [3일 구현 계획](docs/IMPLEMENTATION_PLAN.md)
 - [GitHub 이슈 초안](docs/GITHUB_ISSUES.md)
 - [에이전트 협업 가이드](AGENTS.md)

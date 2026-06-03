@@ -535,6 +535,23 @@ h2 {
   font-size: 18px;
 }
 
+.eventExport {
+  width: max-content;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(91, 127, 182, 0.28);
+  border-radius: 8px;
+  background: rgba(91, 127, 182, 0.08);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
 .miniList {
   display: flex;
   flex-wrap: wrap;

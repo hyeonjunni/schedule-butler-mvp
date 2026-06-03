@@ -9,6 +9,7 @@ import {
   Clock3,
   Copy,
   Database,
+  Download,
   ListTodo,
   MessageCircle,
   Send,
@@ -658,6 +659,12 @@ function EventList({
           <h2>{event.title}</h2>
           {event.location ? <p className="summary">{event.location}</p> : null}
           {event.description && !compact ? <p className="description">{event.description}</p> : null}
+          {event.start_at ? (
+            <a className="eventExport" href={`/api/events/${event.id}/ics`} download>
+              <Download size={14} />
+              캘린더 파일
+            </a>
+          ) : null}
           <div className="miniList">
             {checklist
               .filter((item) => item.event_id === event.id)
