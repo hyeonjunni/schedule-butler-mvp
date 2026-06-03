@@ -36,7 +36,19 @@ const emptyState: AppState = {
   notifications: []
 };
 
-const sampleText = `김시현: 날짜 잡으시져
+type DemoSample = {
+  id: string;
+  label: string;
+  inputType: InputType;
+  content: string;
+};
+
+const demoSamples: DemoSample[] = [
+  {
+    id: "meeting",
+    label: "회의 조율",
+    inputType: "kakao",
+    content: `김시현: 날짜 잡으시져
 김시현: 내일 1시부터 4시까지 안돼요 전 나머지는 다 가능
 조현준: 토요일은 3~4시부터 가능할거같아요
 김시현: 그럼 4시부터 괜찮으시면 하시져
@@ -45,7 +57,26 @@ const sampleText = `김시현: 날짜 잡으시져
 김시현: 그럼 그냥 안되는시간 다 보내주세요
 조현준: 토요일 7- 일요일 8-9
 나: 토 2-4, 6- 일요일은 회의가있긴한데 시간이 미정이라 여기서 먼저 정하면 될것같습니다
-배민: 토요일 7시 전까지 안됨 일요일 하루종일 가능`;
+배민: 토요일 7시 전까지 안됨 일요일 하루종일 가능`
+  },
+  {
+    id: "confirmed",
+    label: "확정 일정",
+    inputType: "memo",
+    content: "내일 오후 3시에 강남역에서 팀 회의하자. 회의 자료 확인하고 노트북이랑 충전기 챙겨줘."
+  },
+  {
+    id: "todo",
+    label: "TODO/준비물",
+    inputType: "email",
+    content: `이번 주 금요일 발표 전까지 해야 할 일 정리합니다.
+
+- 발표자료 최종본 확인
+- 데모 입력 샘플 준비
+- 노트북 충전기와 HDMI 어댑터 챙기기
+- 교수님 서버 배포는 로컬 검증 끝난 뒤 진행`
+  }
+];
 
 type Tab = "input" | "drafts" | "calendar" | "todos" | "alerts";
 
@@ -69,8 +100,8 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof MessageCircle }> = [
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("input");
-  const [content, setContent] = useState(sampleText);
-  const [inputType, setInputType] = useState<InputType>("kakao");
+  const [content, setContent] = useState(demoSamples[0].content);
+  const [inputType, setInputType] = useState<InputType>(demoSamples[0].inputType);
   const [state, setState] = useState<AppState>(emptyState);
   const [currentDraft, setCurrentDraft] = useState<ExtractionDraft | null>(null);
   const [eventForm, setEventForm] = useState<EventForm>(emptyEventForm());
@@ -127,6 +158,12 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function applyDemoSample(sample: DemoSample) {
+    setInputType(sample.inputType);
+    setContent(sample.content);
+    setNotice(`${sample.label} 샘플을 넣었습니다.`);
   }
 
   async function approve(mode: "event" | "draft") {
@@ -268,8 +305,10 @@ export default function Home() {
               content={content}
               inputType={inputType}
               loading={loading}
+              samples={demoSamples}
               setContent={setContent}
               setInputType={setInputType}
+              applySample={applyDemoSample}
               analyze={analyze}
             />
           ) : null}
@@ -311,15 +350,19 @@ function InputPanel({
   content,
   inputType,
   loading,
+  samples,
   setContent,
   setInputType,
+  applySample,
   analyze
 }: {
   content: string;
   inputType: InputType;
   loading: boolean;
+  samples: DemoSample[];
   setContent: (value: string) => void;
   setInputType: (value: InputType) => void;
+  applySample: (sample: DemoSample) => void;
   analyze: () => void;
 }) {
   return (
@@ -333,6 +376,13 @@ function InputPanel({
             onClick={() => setInputType(type)}
           >
             {typeLabel(type)}
+          </button>
+        ))}
+      </div>
+      <div className="sampleGrid" aria-label="시연 샘플">
+        {samples.map((sample) => (
+          <button key={sample.id} type="button" onClick={() => applySample(sample)}>
+            {sample.label}
           </button>
         ))}
       </div>

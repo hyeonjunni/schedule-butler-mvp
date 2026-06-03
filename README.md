@@ -81,6 +81,7 @@ AI 판단:
 - [서버 배포 제한](docs/DEPLOYMENT_CONSTRAINTS.md)
 - [AI 추출 계약](docs/AI_EXTRACTION_CONTRACT.md)
 - [발표용 GPT 프롬프트/파이프라인](docs/PRESENTATION_PIPELINE.md)
+- [금요일 시연 스크립트](docs/DEMO_SCRIPT.md)
 - [3일 구현 계획](docs/IMPLEMENTATION_PLAN.md)
 - [GitHub 이슈 초안](docs/GITHUB_ISSUES.md)
 - [에이전트 협업 가이드](AGENTS.md)
