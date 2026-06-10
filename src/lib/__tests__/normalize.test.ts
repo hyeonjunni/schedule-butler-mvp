@@ -136,8 +136,8 @@ describe("normalizeExtraction", () => {
           person: "김시현",
           available: [
             {
-              start_at: "2026-06-06T14:00:00+09:00",
-              end_at: "2026-06-06T16:00:00+09:00",
+              start_at: "2099-06-06T14:00:00+09:00",
+              end_at: "2099-06-06T16:00:00+09:00",
               text: "토요일 2시부터 4시 가능"
             }
           ],
@@ -147,8 +147,8 @@ describe("normalizeExtraction", () => {
           person: "조현준",
           available: [
             {
-              start_at: "2026-06-06T15:00:00+09:00",
-              end_at: "2026-06-06T17:00:00+09:00",
+              start_at: "2099-06-06T15:00:00+09:00",
+              end_at: "2099-06-06T17:00:00+09:00",
               text: "토요일 3시부터 5시 가능"
             }
           ],
@@ -172,8 +172,8 @@ describe("normalizeExtraction", () => {
           person: "김시현",
           available: [
             {
-              start_at: "2026-06-06T14:00:00+09:00",
-              end_at: "2026-06-06T18:00:00+09:00",
+              start_at: "2099-06-06T14:00:00+09:00",
+              end_at: "2099-06-06T18:00:00+09:00",
               text: "토요일 2시부터 6시까지 가능"
             }
           ],
@@ -183,8 +183,8 @@ describe("normalizeExtraction", () => {
           person: "조현준",
           available: [
             {
-              start_at: "2026-06-06T14:00:00+09:00",
-              end_at: "2026-06-06T18:00:00+09:00",
+              start_at: "2099-06-06T14:00:00+09:00",
+              end_at: "2099-06-06T18:00:00+09:00",
               text: "토요일 2시부터 6시까지 가능"
             }
           ],
@@ -208,8 +208,8 @@ describe("normalizeExtraction", () => {
           person: "김시현",
           available: [
             {
-              start_at: "2026-06-06T14:00:00+09:00",
-              end_at: "2026-06-06T18:00:00+09:00",
+              start_at: "2099-06-06T14:00:00+09:00",
+              end_at: "2099-06-06T18:00:00+09:00",
               text: "토요일 2시부터 6시까지 가능"
             }
           ],
@@ -219,8 +219,8 @@ describe("normalizeExtraction", () => {
           person: "조현준",
           available: [
             {
-              start_at: "2026-06-06T14:00:00+09:00",
-              end_at: "2026-06-06T18:00:00+09:00",
+              start_at: "2099-06-06T14:00:00+09:00",
+              end_at: "2099-06-06T18:00:00+09:00",
               text: "토요일 2시부터 6시까지 가능"
             }
           ],
@@ -231,8 +231,8 @@ describe("normalizeExtraction", () => {
         {
           type: "propose_time",
           message: "AI가 낸 같은 후보",
-          candidate_start_at: "2026-06-06T14:00:00+09:00",
-          candidate_end_at: "2026-06-06T15:00:00+09:00",
+          candidate_start_at: "2099-06-06T14:00:00+09:00",
+          candidate_end_at: "2099-06-06T15:00:00+09:00",
           risk: null
         }
       ]
@@ -241,9 +241,9 @@ describe("normalizeExtraction", () => {
     const proposed = payload.suggestions.filter((suggestion) => suggestion.type === "propose_time");
     expect(proposed).toHaveLength(3);
     expect(proposed.map((suggestion) => suggestion.candidate_start_at)).toEqual([
-      "2026-06-06T05:00:00.000Z",
-      "2026-06-06T06:00:00.000Z",
-      "2026-06-06T07:00:00.000Z"
+      "2099-06-06T05:00:00.000Z",
+      "2099-06-06T06:00:00.000Z",
+      "2099-06-06T07:00:00.000Z"
     ]);
   });
 });
