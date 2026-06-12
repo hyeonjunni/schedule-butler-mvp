@@ -4,7 +4,7 @@
 
 ## 서버
 
-- SSH target: `[server-host-redacted]`
+- SSH target은 repo에 기록하지 않고 별도 안전 채널로 전달합니다.
 - 접속 계정/비밀번호는 repo, issue, commit, 로그에 기록하지 않습니다.
 - 비밀번호는 작업자가 직접 입력하거나 안전한 out-of-band 방식으로 전달받습니다.
 
